@@ -38,22 +38,39 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 ### Prérequis
 
 - Home Assistant 2024.11 ou plus récent.
-- Un poêle Edilkamin piloté par l'ESP32 (firmware Edilkamin_BT ou dérivé) : un thermostat (`climate`), un capteur de statut et un interrupteur Stand-by publiés en MQTT. Ventilation 2, Relax et Chrono sont facultatifs.
-- MQTT, seulement pour le planning de secours.
+- Un ESP32 **Wemos D1 Mini ESP32** près du poêle, avec le firmware Edilkamin Control (voir ci-dessous). Le firmware d'origine [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT) est aussi pris en charge (non testé), sans planning de secours ni ventilation 2.
+- Un serveur **MQTT** (par exemple l'app Mosquitto de Home Assistant) et l'intégration MQTT : l'ESP32 publie toutes les entités du poêle en MQTT (thermostat, statut, Stand-by ; ventilation 2, Relax et Chrono si disponibles).
 
 ### Firmware ESP32
 
-Installation et mise à jour en un clic (Chrome ou Edge sur ordinateur, ESP32 Wemos D1 Mini branché en USB) :
+**Installation et mise à jour en un clic** depuis le navigateur (Chrome ou Edge sur ordinateur, ESP32 branché en USB) :
 
 **👉 [https://akoonet-homeassistant.github.io/edilkamin-control/webflash/](https://akoonet-homeassistant.github.io/edilkamin-control/webflash/)**
 
-Pour une mise à jour, répondre « non » à « Effacer l'appareil » : le Wi-Fi, le serveur MQTT et le planning de secours sont conservés.
-
 ![Installation du firmware](docs/screenshots/installation_firmware.png)
+
+- **Première installation** : garder le bouton **BOOT** de l'ESP32 appuyé en branchant le câble USB, cliquer sur **Installer**, répondre **oui** à « Effacer l'appareil ». Ensuite, se connecter au Wi-Fi `Edilkamin_BT_AP` pour saisir le Wi-Fi de la maison et le serveur MQTT, puis mettre le poêle en mode appairage Bluetooth. L'appareil « Edilkamin » apparaît dans Home Assistant (MQTT).
+- **Mise à jour** : cliquer sur **Installer** et répondre **non** à « Effacer l'appareil » : le Wi-Fi, le serveur MQTT et le planning de secours sont conservés. La version installée s'affiche dans Home Assistant (appareil Edilkamin, « Version du logiciel »).
+
+**Sans la page d'installation** (installation manuelle avec [esptool](https://docs.espressif.com/projects/esptool/)), avec les fichiers du dossier [`webflash`](webflash) :
+
+| Fichier | Adresse |
+|---|---|
+| [`bootloader.bin`](https://github.com/akoonet-homeassistant/edilkamin-control/raw/main/webflash/bootloader.bin) | `0x1000` |
+| [`partitions.bin`](https://github.com/akoonet-homeassistant/edilkamin-control/raw/main/webflash/partitions.bin) | `0x8000` |
+| [`firmware.bin`](https://github.com/akoonet-homeassistant/edilkamin-control/raw/main/webflash/firmware.bin) | `0x10000` |
+
+```bash
+# Première installation
+esptool.py --chip esp32 erase_flash
+esptool.py --chip esp32 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin
+# Mise à jour (réglages conservés)
+esptool.py --chip esp32 write_flash 0x10000 firmware.bin
+```
 
 ### Installation
 
-1. HACS → Intégrations → menu ⋮ → **Dépôts personnalisés** → `https://github.com/akoonet-homeassistant/edilkamin-control`, catégorie **Intégration**.
+1. HACS → menu ⋮ en haut à droite → **Dépôts personnalisés** → dépôt `https://github.com/akoonet-homeassistant/edilkamin-control`, type **Intégration** → **Ajouter**.
 2. Installer **Edilkamin Control**, puis redémarrer Home Assistant.
 3. Paramètres → Appareils et services → **Ajouter une intégration** → Edilkamin Control.
 
@@ -204,20 +221,37 @@ It does not touch the stove itself: everything goes through the entities publish
 ### Requirements
 
 - Home Assistant 2024.11 or newer.
-- An Edilkamin stove driven by the ESP32 (Edilkamin_BT firmware or derived): a thermostat (`climate`), a status sensor and a Standby switch published over MQTT. Fan 2, Relax and Chrono are optional.
-- MQTT, only for the fallback schedule.
+- A **Wemos D1 Mini ESP32** next to the stove, running the Edilkamin Control firmware (see below). The original [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT) firmware is also supported (untested), without fallback schedule or fan 2.
+- An **MQTT** broker (for example the Mosquitto app of Home Assistant) and the MQTT integration: the ESP32 publishes every stove entity over MQTT (thermostat, status, Standby; fan 2, Relax and Chrono when available).
 
 ### ESP32 firmware
 
-One-click install and update (Chrome or Edge on a computer, Wemos D1 Mini ESP32 plugged over USB):
+**One-click install and update** from the browser (Chrome or Edge on a computer, ESP32 plugged over USB):
 
 **👉 [https://akoonet-homeassistant.github.io/edilkamin-control/webflash/](https://akoonet-homeassistant.github.io/edilkamin-control/webflash/)**
 
-For an update, answer “no” to “Erase device”: Wi-Fi, MQTT server and fallback schedule are kept.
+- **First install**: hold the ESP32 **BOOT** button while plugging the USB cable, click **Install**, answer **yes** to “Erase device”. Then join the `Edilkamin_BT_AP` Wi-Fi to enter your home Wi-Fi and MQTT broker, and put the stove in Bluetooth pairing mode. The “Edilkamin” device shows up in Home Assistant (MQTT).
+- **Update**: click **Install** and answer **no** to “Erase device”: Wi-Fi, MQTT broker and fallback schedule are kept. The installed version is shown in Home Assistant (Edilkamin device, “Software version”).
+
+**Without the install page** (manual install with [esptool](https://docs.espressif.com/projects/esptool/)), using the files of the [`webflash`](webflash) folder:
+
+| File | Address |
+|---|---|
+| [`bootloader.bin`](https://github.com/akoonet-homeassistant/edilkamin-control/raw/main/webflash/bootloader.bin) | `0x1000` |
+| [`partitions.bin`](https://github.com/akoonet-homeassistant/edilkamin-control/raw/main/webflash/partitions.bin) | `0x8000` |
+| [`firmware.bin`](https://github.com/akoonet-homeassistant/edilkamin-control/raw/main/webflash/firmware.bin) | `0x10000` |
+
+```bash
+# First install
+esptool.py --chip esp32 erase_flash
+esptool.py --chip esp32 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin
+# Update (settings kept)
+esptool.py --chip esp32 write_flash 0x10000 firmware.bin
+```
 
 ### Installation
 
-1. HACS → Integrations → ⋮ menu → **Custom repositories** → `https://github.com/akoonet-homeassistant/edilkamin-control`, category **Integration**.
+1. HACS → ⋮ menu (top right) → **Custom repositories** → repository `https://github.com/akoonet-homeassistant/edilkamin-control`, type **Integration** → **Add**.
 2. Install **Edilkamin Control**, then restart Home Assistant.
 3. Settings → Devices & services → **Add integration** → Edilkamin Control.
 
