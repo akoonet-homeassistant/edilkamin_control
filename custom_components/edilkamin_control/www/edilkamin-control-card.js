@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.5";
+const ECC_VERSION = "2026.11.6";
 
 const ECC_I18N = {
   fr: {

@@ -23,13 +23,16 @@
           "pellet_entry": "Suivi Stock Pellet",
           "bags_per_fill": "Sacs versés par remplissage",
           "observe": "Mode observation (calcule sans commander le poêle)",
-          "ignitions": "Compteur d'allumages du poêle"
+          "ignitions": "Compteur d'allumages du poêle",
+          "ignition_log": "Historique des allumages existant (input_text)",
+          "stop_log": "Historique des arrêts existant (input_text)"
         },
         "data_description": {
           "presence": "Maison vide : alarme en mode absence ou vacances, personne absente, zone vide, interrupteur coupé. Sert au réglage « Si absent » de chaque programmation.",
           "mqtt_topic": "Laisser vide pour ne pas envoyer de planning à l'ESP32.",
           "schedule_format": "v1 pour le firmware akoonet-13 (5 plages, sans jours ni silence).",
-          "observe": "Pour faire tourner l'intégration à côté d'automatisations existantes : les ordres sont seulement inscrits dans le journal."
+          "observe": "Pour faire tourner l'intégration à côté d'automatisations existantes : les ordres sont seulement inscrits dans le journal.",
+          "ignition_log": "Liste « jj/mm hh:mm ; … » tenue par une automatisation, la plus récente en premier : reprise dans le bouton Allumages de la carte."
         }
       }
     },
@@ -53,13 +56,16 @@
           "pellet_entry": "Suivi Stock Pellet",
           "bags_per_fill": "Sacs versés par remplissage",
           "observe": "Mode observation (calcule sans commander le poêle)",
-          "ignitions": "Compteur d'allumages du poêle"
+          "ignitions": "Compteur d'allumages du poêle",
+          "ignition_log": "Historique des allumages existant (input_text)",
+          "stop_log": "Historique des arrêts existant (input_text)"
         },
         "data_description": {
           "presence": "Maison vide : alarme en mode absence ou vacances, personne absente, zone vide, interrupteur coupé. Sert au réglage « Si absent » de chaque programmation.",
           "mqtt_topic": "Laisser vide pour ne pas envoyer de planning à l'ESP32.",
           "schedule_format": "v1 pour le firmware akoonet-13 (5 plages, sans jours ni silence).",
-          "observe": "Pour faire tourner l'intégration à côté d'automatisations existantes : les ordres sont seulement inscrits dans le journal."
+          "observe": "Pour faire tourner l'intégration à côté d'automatisations existantes : les ordres sont seulement inscrits dans le journal.",
+          "ignition_log": "Liste « jj/mm hh:mm ; … » tenue par une automatisation, la plus récente en premier : reprise dans le bouton Allumages de la carte."
         }
       }
     }

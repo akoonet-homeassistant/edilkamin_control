@@ -12,6 +12,7 @@ import asyncio
 from datetime import datetime, timedelta
 import json
 import logging
+import re
 from typing import Any
 import uuid
 
@@ -37,7 +38,9 @@ from .const import (
     CONF_CHRONO,
     CONF_CLIMATE,
     CONF_FAN2,
+    CONF_IGNITION_LOG,
     CONF_IGNITIONS,
+    CONF_STOP_LOG,
     HISTORY_DAYS,
     CONF_MQTT_TOPIC,
     CONF_OBSERVE,
@@ -89,6 +92,7 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_LEGACY_RE = re.compile(r"^(\d{1,2})/(\d{1,2})\s+(\d{1,2}):(\d{2})")
 
 STORAGE_VERSION = 1
 AWAY_ALARM_STATES = ("armed_away", "armed_vacation")
@@ -141,6 +145,7 @@ class EdilkaminController:
         self.reservoir: dict[str, Any] = {}
         self.ignitions: list[dict[str, Any]] = []
         self.ignitions_entity: str | None = None
+        self.legacy_logs: tuple[str | None, str | None] = (None, None)
         self._lock = asyncio.Lock()
         self._unsubs: list = []
         self._slot_unsub = None
@@ -326,6 +331,16 @@ class EdilkaminController:
         watch = [e for e in (self.ent(CONF_CLIMATE), self.ent(CONF_FAN2), self.ent(CONF_STANDBY),
                              self.ent(CONF_RELAX), self.ent(CONF_STATUS), self.ignitions_entity) if e]
         self._unsubs.append(async_track_state_change_event(hass, watch, self._on_stove_event))
+        # Historique déjà tenu par une automatisation (input_text) : repris et suivi
+        from .config_flow import detect_logs  # noqa: PLC0415
+
+        found = detect_logs(hass)
+        self.legacy_logs = (self.ent(CONF_IGNITION_LOG) or found.get(CONF_IGNITION_LOG),
+                            self.ent(CONF_STOP_LOG) or found.get(CONF_STOP_LOG))
+        if self.legacy_logs[0]:
+            self._import_legacy()
+            self._unsubs.append(async_track_state_change_event(
+                hass, [e for e in self.legacy_logs if e], self._on_legacy_log))
         # Ordres donnés par un utilisateur (carte, tableau de bord, application, assistant vocal)
         self._unsubs.append(hass.bus.async_listen(EVENT_CALL_SERVICE, self._on_call_service))
         if self.ent(CONF_PRESENCE):
@@ -338,6 +353,7 @@ class EdilkaminController:
         self._reservoir_status(self.status(), dt_util.utcnow(), restart=True)
 
         async def _started(_: Event | None = None) -> None:
+            self._import_legacy_reservoir()
             self.schedule_next_slot()
             self.schedule_publish(0)
             await self.async_apply(K_START)
@@ -758,6 +774,65 @@ class EdilkaminController:
             keep.append(rec)
         self.ignitions = keep[:60]
 
+    @staticmethod
+    def _legacy_time(text: str, now: datetime) -> datetime | None:
+        """« jj/mm hh:mm » en heure locale ; l'année est celle qui ne place pas la date dans le futur."""
+        m = _LEGACY_RE.match(text.strip())
+        if not m:
+            return None
+        day, month, hour, minute = (int(x) for x in m.groups())
+        for year in (now.year, now.year - 1):
+            try:
+                t = datetime(year, month, day, hour, minute, tzinfo=dt_util.get_default_time_zone())
+            except ValueError:
+                continue
+            if t <= now + timedelta(days=1):
+                return t
+        return None
+
+    @callback
+    def _on_legacy_log(self, _event: Event) -> None:
+        self._import_legacy()
+
+    def _import_legacy(self) -> None:
+        """Fusionne l'historique d'une automatisation existante (allumages et arrêts en input_text)."""
+        starts_id, stops_id = self.legacy_logs
+        st = self.hass.states.get(starts_id) if starts_id else None
+        if st is None or st.state in ("", *STATUS_UNAVAILABLE):
+            return
+        sp = self.hass.states.get(stops_id) if stops_id else None
+        stops = sp.state.split(";") if sp is not None and sp.state not in ("", *STATUS_UNAVAILABLE) else []
+        now = dt_util.now()
+        recs = {}
+        for rec in self.ignitions:
+            t = dt_util.parse_datetime(rec.get("start") or "")
+            if t is not None:
+                recs[t] = rec
+        changed = False
+        for i, text in enumerate(st.state.split(";")):
+            start = self._legacy_time(text, now)
+            if start is None:
+                continue
+            raw = stops[i].strip() if i < len(stops) else "?"
+            if raw == "-":
+                end = None if i == 0 else "?"
+            else:
+                t = self._legacy_time(raw, now)
+                end = t.isoformat() if t is not None and t >= start else "?"
+            same = next((r for t, r in recs.items() if abs((t - start).total_seconds()) < 180), None)
+            if same is None:
+                recs[start] = {"start": start.isoformat(), "end": end}
+                changed = True
+            elif same.get("end") in (None, "?") and end not in (None, "?") and same.get("end") != end:
+                same["end"] = end  # arrêt vu par l'automatisation et pas par l'intégration
+                changed = True
+        if not changed:
+            return
+        self.ignitions = [recs[t] for t in sorted(recs, reverse=True)]
+        self._prune_ignitions()
+        self.async_save()
+        self.notify()
+
     def ignition_history(self) -> list[dict[str, Any]]:
         self._prune_ignitions()
         return self.ignitions
@@ -1107,6 +1182,60 @@ class EdilkaminController:
     def reservoir_low(self) -> bool:
         th = float(self.state.get("alert_threshold") or 0)
         return th > 0 and self.reservoir_hours() >= th
+
+    def _import_legacy_reservoir(self) -> None:
+        """Reprise unique du suivi de réservoir tenu par une automatisation (vue Poêle).
+
+        Heures depuis le remplissage, durées des derniers réservoirs, dernier chargement et seuil d'alerte,
+        trouvés par leur nom (…heures_depuis_remplissage, …durees_reservoirs, …dernier_chargement,
+        …seuil_alerte_reservoir). Fait une seule fois : les réglages faits ensuite ne sont pas écrasés.
+        """
+        if self.state.get("legacy_reservoir"):
+            return
+        from .config_flow import detect_reservoir_logs  # noqa: PLC0415
+
+        found = detect_reservoir_logs(self.hass)
+
+        def num(key: str) -> float | None:
+            st = self.hass.states.get(found[key]) if key in found else None
+            try:
+                return float(st.state) if st is not None else None
+            except ValueError:
+                return None
+
+        r = self.reservoir
+        done = []
+        st = self.hass.states.get(found["durations"]) if "durations" in found else None
+        if st is not None and st.state not in ("", *STATUS_UNAVAILABLE):
+            durations = []
+            for x in st.state.split(";"):
+                try:
+                    durations.append(round(float(x.replace(",", ".")), 1))
+                except ValueError:
+                    continue
+            if durations:
+                r["durations"] = durations[:10]
+                done.append("durées")
+        hours = num("hours")
+        if hours is not None and hours >= 0:
+            r["hours"] = hours
+            r["since"] = dt_util.utcnow().isoformat() if self.status() not in STATUS_NOT_BURNING else None
+            done.append("heures")
+        load = num("load")
+        if load and r.get("last_load") is None:
+            r["last_load"] = round(load, 1)
+            done.append("dernier chargement")
+        threshold = num("threshold")
+        if threshold and not float(self.state.get("alert_threshold") or 0):
+            self.state["alert_threshold"] = threshold
+            done.append("seuil")
+        if not done:
+            return
+        r["alerted"] = self.reservoir_low()  # pas de nouvelle alerte pour un seuil déjà dépassé
+        self.state["legacy_reservoir"] = True
+        self._log("Réservoir de granulés repris de l'automatisation existante : " + ", ".join(done) + ".")
+        self.async_save()
+        self.notify()
 
     @callback
     def reservoir_filled(self, load_kg: float | None = None) -> None:

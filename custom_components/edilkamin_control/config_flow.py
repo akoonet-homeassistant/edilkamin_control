@@ -16,7 +16,9 @@ from .const import (
     CONF_CHRONO,
     CONF_CLIMATE,
     CONF_FAN2,
+    CONF_IGNITION_LOG,
     CONF_IGNITIONS,
+    CONF_STOP_LOG,
     CONF_MQTT_TOPIC,
     CONF_OBSERVE,
     CONF_PELLET_ENTRY,
@@ -50,6 +52,35 @@ def detect_siblings(hass: HomeAssistant, climate: str) -> dict[str, str]:
     return found
 
 
+def detect_logs(hass: HomeAssistant) -> dict[str, str]:
+    """Historique tenu par une automatisation : input_text « …derniers_allumages » et « …derniers_arrets »."""
+    found: dict[str, str] = {}
+    for st in hass.states.async_all("input_text"):
+        eid = st.entity_id
+        if CONF_IGNITION_LOG not in found and eid.endswith("allumages") and "poele" in eid:
+            found[CONF_IGNITION_LOG] = eid
+        elif CONF_STOP_LOG not in found and eid.endswith("arrets") and "poele" in eid:
+            found[CONF_STOP_LOG] = eid
+    return found
+
+
+def detect_reservoir_logs(hass: HomeAssistant) -> dict[str, str]:
+    """Suivi de réservoir tenu par une automatisation (vue Poêle), trouvé par le nom des entités."""
+    wanted = {
+        "hours": ("sensor", "heures_depuis_remplissage"),
+        "durations": ("input_text", "durees_reservoirs"),
+        "load": ("input_number", "dernier_chargement"),
+        "threshold": ("input_number", "seuil_alerte_reservoir"),
+    }
+    found: dict[str, str] = {}
+    for key, (domain, suffix) in wanted.items():
+        for st in hass.states.async_all(domain):
+            if st.entity_id.endswith(suffix) and "poele" in st.entity_id:
+                found[key] = st.entity_id
+                break
+    return found
+
+
 def guess_topic(hass: HomeAssistant, climate: str) -> str:
     """Sujet du planning de secours d'après l'identifiant MQTT du thermostat (« 322707E4_… »)."""
     ent = er.async_get(hass).async_get(climate)
@@ -77,6 +108,8 @@ def entities_schema(hass: HomeAssistant, d: dict[str, Any]) -> vol.Schema:
         opt(CONF_RELAX): ent("switch"),
         opt(CONF_CHRONO): ent("switch"),
         opt(CONF_IGNITIONS): ent("sensor"),
+        opt(CONF_IGNITION_LOG): ent(["input_text", "text"]),
+        opt(CONF_STOP_LOG): ent(["input_text", "text"]),
         opt(CONF_PRESENCE): ent(PRESENCE_DOMAINS),
         opt(CONF_MQTT_TOPIC): selector.TextSelector(),
         vol.Required(CONF_SCHEDULE_FORMAT, default=d.get(CONF_SCHEDULE_FORMAT, "v2")): selector.SelectSelector(
@@ -98,7 +131,7 @@ def clean(user_input: dict[str, Any]) -> dict[str, Any]:
     out = dict(user_input)
     if out.get(CONF_PELLET_ENTRY) == NONE:
         out[CONF_PELLET_ENTRY] = None
-    for k in (CONF_FAN2, CONF_RELAX, CONF_CHRONO, CONF_IGNITIONS, CONF_PRESENCE, CONF_MQTT_TOPIC):
+    for k in (CONF_FAN2, CONF_RELAX, CONF_CHRONO, CONF_IGNITIONS, CONF_IGNITION_LOG, CONF_STOP_LOG, CONF_PRESENCE, CONF_MQTT_TOPIC):
         out.setdefault(k, None)
         if out[k] == "":
             out[k] = None
@@ -137,7 +170,8 @@ class EdilkaminControlConfigFlow(ConfigFlow, domain=DOMAIN):
             state = self.hass.states.get(climate)
             title = (state.attributes.get("friendly_name") if state else None) or "Poêle"
             return self.async_create_entry(title=title, data=data)
-        defaults = {**detect_siblings(self.hass, climate), CONF_MQTT_TOPIC: guess_topic(self.hass, climate)}
+        defaults = {**detect_siblings(self.hass, climate), **detect_logs(self.hass),
+                    CONF_MQTT_TOPIC: guess_topic(self.hass, climate)}
         pe = pellet_entries(self.hass)
         if pe:
             defaults[CONF_PELLET_ENTRY] = pe[0]["value"]
@@ -155,4 +189,6 @@ class EdilkaminControlOptionsFlow(OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(data=clean(user_input))
         current = {**self.config_entry.data, **self.config_entry.options}
+        for k, v in detect_logs(self.hass).items():
+            current[k] = current.get(k) or v
         return self.async_show_form(step_id="init", data_schema=entities_schema(self.hass, current))

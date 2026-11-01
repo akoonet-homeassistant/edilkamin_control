@@ -23,13 +23,16 @@
           "pellet_entry": "Suivi Stock Pellet",
           "bags_per_fill": "Bags poured per refill",
           "observe": "Observe mode (computes without driving the stove)",
-          "ignitions": "Stove ignition counter"
+          "ignitions": "Stove ignition counter",
+          "ignition_log": "Existing ignition history (input_text)",
+          "stop_log": "Existing stop history (input_text)"
         },
         "data_description": {
           "presence": "Empty house: alarm armed away or vacation, person away, empty zone, switch off. Used by each schedule's “If away” setting.",
           "mqtt_topic": "Leave empty to send no schedule to the ESP32.",
           "schedule_format": "v1 for the akoonet-13 firmware (5 slots, no days or silent mode).",
-          "observe": "To run the integration next to existing automations: commands are only written to the logbook."
+          "observe": "To run the integration next to existing automations: commands are only written to the logbook.",
+          "ignition_log": "« dd/mm hh:mm ; … » list kept by an automation, newest first: imported into the card's Ignitions button."
         }
       }
     },
@@ -53,13 +56,16 @@
           "pellet_entry": "Suivi Stock Pellet",
           "bags_per_fill": "Bags poured per refill",
           "observe": "Observe mode (computes without driving the stove)",
-          "ignitions": "Stove ignition counter"
+          "ignitions": "Stove ignition counter",
+          "ignition_log": "Existing ignition history (input_text)",
+          "stop_log": "Existing stop history (input_text)"
         },
         "data_description": {
           "presence": "Empty house: alarm armed away or vacation, person away, empty zone, switch off. Used by each schedule's “If away” setting.",
           "mqtt_topic": "Leave empty to send no schedule to the ESP32.",
           "schedule_format": "v1 for the akoonet-13 firmware (5 slots, no days or silent mode).",
-          "observe": "To run the integration next to existing automations: commands are only written to the logbook."
+          "observe": "To run the integration next to existing automations: commands are only written to the logbook.",
+          "ignition_log": "« dd/mm hh:mm ; … » list kept by an automation, newest first: imported into the card's Ignitions button."
         }
       }
     }
