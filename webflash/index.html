@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edilkamin Control – Installation du firmware</title>
+  <!-- ESP Web Tools 10.4.0 (Apache 2.0), inclus localement -->
+  <script type="module" src="esp-web-tools/install-button.js"></script>
+  <style>
+    :root { --bg: #f6f5f3; --card: #fff; --text: #1f2328; --muted: #5d6470; --accent: #f06b21; --border: #e3e0da; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #15171a; --card: #1e2125; --text: #e8e6e3; --muted: #a2a8b1; --border: #2e3237; } }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 32px 16px 48px; }
+    h1 { font-size: 26px; margin: 0 0 4px; }
+    .ver { color: var(--muted); margin: 0 0 24px; }
+    section { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+    h2 { font-size: 18px; margin: 0 0 10px; }
+    ol, ul { padding-left: 22px; margin: 8px 0; }
+    li { margin: 4px 0; }
+    .install { display: flex; justify-content: center; padding: 8px 0 4px; }
+    esp-web-install-button button[slot="activate"] { background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 12px 22px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .warn { color: #c0392b; font-weight: 600; }
+    small, .muted { color: var(--muted); }
+    a { color: var(--accent); }
+    hr { border: 0; border-top: 1px solid var(--border); margin: 28px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Edilkamin Control – firmware ESP32</h1>
+  <p class="ver">Version <b id="v">2026.11.1</b> · Wemos D1 Mini ESP32</p>
+
+  <section>
+    <div class="install">
+      <esp-web-install-button manifest="manifest.json">
+        <button slot="activate">Installer / mettre à jour · Install / update</button>
+        <span slot="unsupported">Navigateur non compatible : utilisez Chrome ou Edge sur ordinateur. · Unsupported browser: use Chrome or Edge on a computer.</span>
+        <span slot="not-allowed">Page à ouvrir en HTTPS. · This page must be opened over HTTPS.</span>
+      </esp-web-install-button>
+    </div>
+  </section>
+
+  <section>
+    <h2>🇫🇷 Installation et mise à jour</h2>
+    <ol>
+      <li>Ouvrez cette page avec <b>Chrome</b> ou <b>Edge</b> sur un ordinateur.</li>
+      <li>Branchez l'ESP32 en USB. Pour une première installation, gardez le bouton <b>BOOT</b> appuyé en branchant le câble.</li>
+      <li>Cliquez sur <b>Installer / mettre à jour</b>, puis choisissez le port de l'ESP32.</li>
+      <li><b>Mise à jour</b> : répondez <b>non</b> à « Effacer l'appareil » pour garder le Wi-Fi, le serveur MQTT et le planning de secours.<br>
+        <b>Première installation</b> : répondez <b>oui</b>, puis connectez-vous au Wi-Fi <code>Edilkamin_BT_AP</code> pour saisir le Wi-Fi et le serveur MQTT.</li>
+      <li>Au premier démarrage, mettez le poêle en mode appairage Bluetooth. L'appareil « Edilkamin » apparaît ensuite dans Home Assistant (MQTT).</li>
+    </ol>
+    <p class="muted">Le firmware publie la version installée dans Home Assistant (appareil Edilkamin, « Version du logiciel »).</p>
+  </section>
+
+  <section>
+    <h2>🇬🇧 Installation and update</h2>
+    <ol>
+      <li>Open this page with <b>Chrome</b> or <b>Edge</b> on a computer.</li>
+      <li>Plug the ESP32 in over USB. For a first install, hold the <b>BOOT</b> button while plugging the cable.</li>
+      <li>Click <b>Install / update</b>, then pick the ESP32 port.</li>
+      <li><b>Update</b>: answer <b>no</b> to “Erase device” to keep Wi-Fi, MQTT server and fallback schedule.<br>
+        <b>First install</b>: answer <b>yes</b>, then join the <code>Edilkamin_BT_AP</code> Wi-Fi to enter your Wi-Fi and MQTT server.</li>
+      <li>On first start, put the stove in Bluetooth pairing mode. The “Edilkamin” device then shows up in Home Assistant (MQTT).</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Nouveautés · What's new — 2026.11.1</h2>
+    <ul>
+      <li>Planning de secours v2 : jusqu'à 10 plages, jours de la semaine et silence (Relax), envoyé par l'intégration Edilkamin Control. Le format v1 (5 plages) reste accepté.<br>
+        <small>Fallback schedule v2: up to 10 slots, days of the week and silent mode, sent by the Edilkamin Control integration. v1 (5 slots) still accepted.</small></li>
+      <li>Version du firmware affichée dans Home Assistant.<br><small>Firmware version shown in Home Assistant.</small></li>
+    </ul>
+  </section>
+
+  <p class="muted">Firmware dérivé de <a href="https://github.com/netmb/Edilkamin_BT">netmb/Edilkamin_BT</a>. Non affilié à Edilkamin. · Firmware derived from netmb/Edilkamin_BT. Not affiliated with Edilkamin.</p>
+</main>
+<script>
+  fetch("manifest.json").then((r) => r.json()).then((m) => { document.getElementById("v").textContent = m.version; }).catch(() => {});
+</script>
+</body>
+</html>

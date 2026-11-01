@@ -85,13 +85,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def _register_card(hass: HomeAssistant) -> None:
-    path = Path(__file__).parent / "www" / "edilkamin-control-card.js"
+    # Dossier www servi en /edilkamin_control/ : carte et images des poêles
+    path = Path(__file__).parent / "www"
     try:
         from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
 
-        await hass.http.async_register_static_paths([StaticPathConfig(CARD_URL, str(path), False)])
+        await hass.http.async_register_static_paths([StaticPathConfig(f"/{DOMAIN}", str(path), False)])
     except (ImportError, AttributeError):  # Home Assistant ancien
-        hass.http.register_static_path(CARD_URL, str(path), False)
+        hass.http.register_static_path(f"/{DOMAIN}", str(path), False)
     from homeassistant.components.frontend import add_extra_js_url  # noqa: PLC0415
 
     try:

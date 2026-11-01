@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.1";
+const ECC_VERSION = "2026.11.2";
 
 const ECC_I18N = {
   fr: {
@@ -57,6 +57,11 @@ const ECC_I18N = {
   },
 };
 
+// Images intégrées : « bild9 » (Bild 9+, par défaut) et « generic » (dessin). Vitre en % d'un cadre 140 × 212.
+const ECC_IMAGES = {
+  bild9: { src: "/edilkamin_control/bild9.svg", window: { x: 57.8, y: 34.9, width: 29.5, height: 33.5 } },
+};
+
 // Suffixes des entités du firmware (même appareil que le thermostat)
 const ECC_DEVICE_KEYS = {
   status: ["sensor", ["_status", "_statut"]],
@@ -99,6 +104,8 @@ class EdilkaminControlCard extends HTMLElement {
     this._page = null;
     this._draft = null;
   }
+
+  static getConfigElement() { return document.createElement("edilkamin-control-card-editor"); }
 
   static getStubConfig(hass) {
     const c = Object.keys(hass.states).find((e) => e.startsWith("climate.") && e.includes("edilkamin"));
@@ -309,6 +316,13 @@ class EdilkaminControlCard extends HTMLElement {
   }
 
   _stove(ph, veille, low) {
+    const img = this._config.image || "bild9";
+    if (img === "generic" || img === "default") return this._stoveSvg(ph, veille, low);
+    const preset = ECC_IMAGES[img];
+    return this._stoveImage(preset ? preset.src : img, ph, veille, low, preset ? preset.window : null);
+  }
+
+  _stoveSvg(ph, veille, low) {
     const k = veille ? 0 : ph === "on" ? 0.75 : ph === "ignition" ? 0.35 : ph === "shutdown" ? 0.3 : 0;
     const p = Math.min(5, Math.max(1, Number(this._realPower()) || 1));
     const kk = ph === "on" ? 0.45 + p * 0.11 : k;
@@ -367,6 +381,67 @@ class EdilkaminControlCard extends HTMLElement {
   _dd(kind, label, options, cur, disp, entity) {
     return `<label class="dd"><small>${label}</small><span>${disp ? disp(cur) : cur ?? "—"}</span><ha-icon icon="mdi:chevron-down"></ha-icon>
       <select data-dd="${kind}" ${entity ? `data-entity="${entity}"` : ""}>${options.map((o) => `<option value="${o}" ${o === cur ? "selected" : ""}>${disp ? disp(o) : o}</option>`).join("")}</select></label>`;
+  }
+
+  /* Image personnelle du poêle : les flammes sont dessinées dans la vitre (image_window, en % de l'image) */
+  _stoveImage(src, ph, veille, low, presetWindow) {
+    const w = Object.assign({ x: 25, y: 25, width: 50, height: 40 }, presetWindow || this._config.image_window || {});
+    const p = Math.min(5, Math.max(1, Number(this._realPower()) || 1));
+    const relax = this._v("relax") === "on";
+    const a = this._s("climate")?.attributes || {};
+    const alarm = ph === "alarm";
+    const k = veille ? 0 : ph === "on" ? (relax ? 0.55 : 0.45 + p * 0.11) : ph === "ignition" ? 0.35 : ph === "shutdown" ? 0.3 : 0;
+    const lit = k > 0;
+    const flames = lit ? `
+      <rect width="100" height="100" fill="#120804" opacity=".9"/>
+      <rect class="glowp" width="100" height="100" fill="url(#eccG2)" style="opacity:${0.35 + k * 0.6}"/>
+      <g transform="translate(50 92) scale(${0.85 + k * 0.25} ${k}) translate(-50 -92)">
+        <g class="fl">
+          <path d="M32 92 C20 88 22 72 29 62 C31 73 37 74 35 63 C45 74 45 89 32 92Z" fill="url(#eccF2)" style="animation-delay:-.3s"/>
+          <path d="M68 92 C80 88 78 72 71 62 C69 73 63 74 65 63 C55 74 55 89 68 92Z" fill="url(#eccF2)" style="animation-delay:-.7s"/>
+          <path d="M50 92 C28 86 32 60 43 44 C43 58 54 58 50 30 C70 50 73 84 50 92Z" fill="url(#eccF2)"/>
+          <path d="M50 92 C39 89 41 74 47 66 C48 75 53 74 52 63 C61 74 61 89 50 92Z" fill="#ffe082" style="animation-delay:-.5s"/>
+        </g>
+      </g>` : "";
+    const spark = ph === "ignition" ? `<circle class="blink" cx="50" cy="88" r="3" fill="#fff59d"/>` : "";
+    const waves = ph === "on" ? [25, 50, 75].map((x, i) => `<path class="wave" d="M${x} 12 q3 -3 0 -6 q-3 -3 0 -6" fill="none" stroke="#ff8a65" stroke-width="1.6" stroke-linecap="round" style="animation-delay:${i * 0.6}s"/>`).join("") : "";
+    const fan = (n) => {
+      const rf = Number(this._v(n === 1 ? "real_fan1" : "real_fan2"));
+      const on = !relax && ph !== "off" && ph !== "unavailable" && rf !== 0;
+      const v = (rf / 20) || (parseInt(n === 1 ? a.fan_mode : this._v("fan2")) / 20) || 3;
+      const d = Math.max(0.35, 1.9 - v * 0.25);
+      const col = on ? "#4fc3f7" : "#6b7480";
+      return `<svg viewBox="-10 -10 20 27" width="18" height="25">
+        <circle r="8" fill="#2b2f34" stroke="#6b7480"/>
+        <g class="fan" style="--d:${d}s;animation-play-state:${on ? "running" : "paused"}">
+          ${[0, 120, 240].map((r) => `<path d="M0 0 C3 -2 3 -6 0 -7 C-2 -5 -2 -2 0 0Z" fill="${col}" transform="rotate(${r})"/>`).join("")}
+        </g>
+        <circle r="1.4" fill="#9aa3ad"/>
+        <text y="15.5" text-anchor="middle" font-size="6" fill="var(--secondary-text-color)">V${n}</text>
+      </svg>`;
+    };
+    let lcd = this._t("off").toUpperCase();
+    if (alarm) lcd = this._t("alarm").toUpperCase();
+    else if (veille) lcd = "STAND-BY";
+    else if (ph !== "off") lcd = `${this._fmt(a.current_temperature)}°>${this._fmt(a.temperature)}° P${this._realPower() || "-"}`;
+    const filter = alarm ? "drop-shadow(0 0 6px #e53935)" : lit ? "drop-shadow(0 0 8px rgba(255,120,0,.45))" : "none";
+    const frame = this._config.image_calibration ? "outline:1px dashed red;" : "";
+    return `
+    <div class="imgw">
+      <img src="${src}" alt="" style="filter:${filter}" class="${alarm ? "blink" : ""}">
+      <svg viewBox="0 0 100 12" preserveAspectRatio="none" class="imgwaves">${waves}</svg>
+      <div class="imgwin" style="left:${w.x}%;top:${w.y}%;width:${w.width}%;height:${w.height}%;${frame}">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="eccF2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff6f00"/><stop offset=".6" stop-color="#ffa000"/><stop offset="1" stop-color="#ffd54f"/></linearGradient>
+            <radialGradient id="eccG2" cx=".5" cy=".9" r=".8"><stop offset="0" stop-color="#ff9800" stop-opacity=".85"/><stop offset="1" stop-color="#ff9800" stop-opacity="0"/></radialGradient>
+          </defs>
+          ${flames}${spark}
+        </svg>
+      </div>
+    </div>
+    <div class="imgbar">${fan(1)}<div class="lcd ${alarm ? "blink" : ""}" style="color:${alarm ? "#ff5252" : "#7cffb2"}">${lcd}</div>${fan(2)}</div>
+    ${low ? `<div class="red blink lowtxt">${this._t("pellets_low")}</div>` : ""}`;
   }
 
   _modes() {
@@ -917,6 +992,18 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .tile ha-icon { --mdc-icon-size: 22px; }
 .tl { font-size: 11px; color: var(--secondary-text-color); } .tv { font-size: 13px; font-weight: 600; }
 .stove { width: 120px; height: auto; display: block; overflow: visible; }
+.imgw { position: relative; width: 120px; margin-top: 12px; }
+.imgw { aspect-ratio: 140 / 212; }
+.imgw img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.imgwaves { position: absolute; left: 0; top: -14px; width: 100%; height: 14px; overflow: visible; }
+.imgwin { position: absolute; overflow: hidden; }
+.imgwin svg { width: 100%; height: 100%; display: block; }
+.imgbar { display: flex; align-items: center; justify-content: space-between; width: 120px; margin-top: 4px; }
+.imgbar .fan { transform-box: fill-box; transform-origin: center; }
+.lcd { background: #0c1720; border: 1px solid #8f98a2; border-radius: 3px; padding: 1px 4px; font: 8px monospace; white-space: nowrap; overflow: hidden; max-width: 80px; }
+.lowtxt { font-size: 10px; text-align: center; width: 120px; margin-top: 2px; }
+.glowp { animation: ecc-glow 2.6s ease-in-out infinite; }
+@keyframes ecc-glow { 0%,100% { opacity: .45; } 50% { opacity: .9; } }
 .stove.lit { filter: drop-shadow(0 0 8px rgba(255,120,0,.45)); }
 .fl path { transform-box: fill-box; transform-origin: 50% 100%; animation: ecc-fl 1.1s ease-in-out infinite alternate; }
 @keyframes ecc-fl { from { transform: scaleY(.88) skewX(-3deg); } to { transform: scaleY(1.08) skewX(3deg); } }
@@ -926,12 +1013,89 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 @keyframes ecc-wave { 0% { opacity: 0; transform: translateY(4px); } 50% { opacity: .9; } 100% { opacity: 0; transform: translateY(-6px); } }
 .blink { animation: ecc-blink 1s steps(2) infinite; }
 @keyframes ecc-blink { 50% { opacity: .35; } }
-@media (max-width: 380px) { .head { grid-template-columns: 100px 1fr; } .stove { width: 100px; } .big { font-size: 34px; } }
+@media (max-width: 380px) { .head { grid-template-columns: 100px 1fr; } .stove, .imgw, .imgbar, .lowtxt { width: 100px; } .big { font-size: 34px; } }
 `;
+
+
+/* Éditeur visuel : thermostat, titre, dessin intégré ou image personnelle (avec position de la vitre) */
+const ECC_ED_I18N = {
+  fr: { climate: "Thermostat du poêle", title: "Titre", image_mode: "Image du poêle", bild9: "Edilkamin Bild 9+", builtin: "Dessin simple", custom: "Image personnelle",
+    image: "Adresse de l'image (ex. /local/poele/poele.svg)", win_x: "Vitre : gauche (%)", win_y: "Vitre : haut (%)", win_w: "Vitre : largeur (%)",
+    win_h: "Vitre : hauteur (%)", image_calibration: "Afficher le cadre de la vitre (réglage)", mode: "Affichage", full: "Carte complète", planning: "Menu des programmations seul" },
+  en: { climate: "Stove thermostat", title: "Title", image_mode: "Stove picture", bild9: "Edilkamin Bild 9+", builtin: "Simple drawing", custom: "Own picture",
+    image: "Picture URL (e.g. /local/stove/stove.svg)", win_x: "Glass: left (%)", win_y: "Glass: top (%)", win_w: "Glass: width (%)",
+    win_h: "Glass: height (%)", image_calibration: "Show the glass frame (calibration)", mode: "Display", full: "Full card", planning: "Schedule menu only" },
+};
+
+class EdilkaminControlCardEditor extends HTMLElement {
+  setConfig(config) { this._config = { ...config }; this._render(); }
+  set hass(hass) { this._hass = hass; if (this._form) this._form.hass = hass; else this._render(); }
+
+  _t(k) { const l = (this._hass?.locale?.language || "fr").slice(0, 2); return (ECC_ED_I18N[l] || ECC_ED_I18N.en)[k] || k; }
+
+  _data() {
+    const c = this._config || {}, w = c.image_window || {};
+    const im = c.image || "bild9";
+    const kind = im === "default" ? "generic" : (ECC_IMAGES[im] || im === "generic") ? im : "custom";
+    const custom = kind === "custom";
+    return { climate: c.climate, title: c.title, mode: c.mode || "full", image_mode: kind,
+      image: custom ? c.image : "", win_x: w.x ?? 25, win_y: w.y ?? 25, win_w: w.width ?? 50, win_h: w.height ?? 40,
+      image_calibration: !!c.image_calibration };
+  }
+
+  _schema(d) {
+    const num = (name) => ({ name, selector: { number: { min: 0, max: 100, step: 0.1, mode: "box" } } });
+    const s = [
+      { name: "climate", required: true, selector: { entity: { domain: "climate" } } },
+      { name: "title", selector: { text: {} } },
+      { name: "mode", selector: { select: { mode: "dropdown", options: [{ value: "full", label: this._t("full") }, { value: "planning", label: this._t("planning") }] } } },
+      { name: "image_mode", selector: { select: { mode: "dropdown", options: [{ value: "bild9", label: this._t("bild9") }, { value: "generic", label: this._t("builtin") }, { value: "custom", label: this._t("custom") }] } } },
+    ];
+    if (d.image_mode === "custom") {
+      s.push({ name: "image", selector: { text: {} } },
+        { type: "grid", name: "", schema: [num("win_x"), num("win_y"), num("win_w"), num("win_h")] },
+        { name: "image_calibration", selector: { boolean: {} } });
+    }
+    return s;
+  }
+
+  _render() {
+    if (!this._hass || !this._config) return;
+    if (!this._form) {
+      this._form = document.createElement("ha-form");
+      this._form.computeLabel = (sc) => this._t(sc.name);
+      this._form.addEventListener("value-changed", (ev) => this._changed(ev.detail.value));
+      this.appendChild(this._form);
+    }
+    const d = this._data();
+    this._form.hass = this._hass;
+    this._form.data = d;
+    this._form.schema = this._schema(d);
+  }
+
+  _changed(v) {
+    const c = { ...this._config, climate: v.climate };
+    for (const k of ["title", "mode"]) { if (v[k] && !(k === "mode" && v[k] === "full")) c[k] = v[k]; else delete c[k]; }
+    if (v.image_mode === "custom") {
+      c.image = v.image || "/local/poele.svg";
+      c.image_window = { x: Number(v.win_x), y: Number(v.win_y), width: Number(v.win_w), height: Number(v.win_h) };
+      if (v.image_calibration) c.image_calibration = true; else delete c.image_calibration;
+    } else {
+      if (v.image_mode === "bild9") delete c.image; else c.image = v.image_mode;
+      delete c.image_window; delete c.image_calibration;
+    }
+    this._config = c;
+    this._render();
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: c }, bubbles: true, composed: true }));
+  }
+}
 
 // La carte est chargée très tôt par l'intégration : dans Home Assistant, attendre que l'interface ait
 // installé son registre d'éléments personnalisés avant de déclarer la carte.
-const eccDefine = () => { if (!customElements.get("edilkamin-control-card")) customElements.define("edilkamin-control-card", EdilkaminControlCard); };
+const eccDefine = () => {
+  if (!customElements.get("edilkamin-control-card")) customElements.define("edilkamin-control-card", EdilkaminControlCard);
+  if (!customElements.get("edilkamin-control-card-editor")) customElements.define("edilkamin-control-card-editor", EdilkaminControlCardEditor);
+};
 if (document.querySelector("home-assistant") || "hassConnection" in window) customElements.whenDefined("home-assistant").then(eccDefine);
 else eccDefine();
 window.customCards = window.customCards || [];
@@ -939,7 +1103,7 @@ window.customCards.push({
   type: "edilkamin-control-card",
   name: "Edilkamin Control",
   description: "Pilotage et programmation d'un poêle Edilkamin (Edilkamin Control)",
-  preview: false,
+  preview: true,
   documentationURL: "https://github.com/akoonet-homeassistant/edilkamin-control",
 });
 console.info(`%c EDILKAMIN-CONTROL-CARD %c ${ECC_VERSION} `, "color:#fff;background:#f06b21;font-weight:700", "color:#f06b21");

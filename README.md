@@ -32,13 +32,24 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 - **Réservoir de granulés** : heures de chauffe depuis le remplissage, durée moyenne d'un réservoir, autonomie estimée, seuil d'alerte.
 - **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (facultatif, s'il est installé) : le bouton « Réservoir rempli » enregistre la consommation dans Suivi Stock Pellet, une consommation saisie dans Suivi Stock Pellet remet le compteur du réservoir à zéro, et l'autonomie du stock est calculée.
 - **Mode observation** : l'intégration calcule tout mais n'envoie rien au poêle ; les ordres sont inscrits dans le journal. Pratique pour la faire tourner à côté d'automatisations existantes avant de basculer.
-- **Carte Lovelace** fournie et chargée automatiquement.
+- **Carte Lovelace** fournie et chargée automatiquement, avec éditeur visuel et choix de l'image du poêle (Edilkamin Bild 9+ par défaut, dessin simple ou image personnelle).
+- **Firmware ESP32** installable et mis à jour en un clic depuis le navigateur.
 
 ### Prérequis
 
 - Home Assistant 2024.11 ou plus récent.
 - Un poêle Edilkamin piloté par l'ESP32 (firmware Edilkamin_BT ou dérivé) : un thermostat (`climate`), un capteur de statut et un interrupteur Stand-by publiés en MQTT. Ventilation 2, Relax et Chrono sont facultatifs.
 - MQTT, seulement pour le planning de secours.
+
+### Firmware ESP32
+
+Installation et mise à jour en un clic (Chrome ou Edge sur ordinateur, ESP32 Wemos D1 Mini branché en USB) :
+
+**👉 [https://akoonet-homeassistant.github.io/edilkamin-control/webflash/](https://akoonet-homeassistant.github.io/edilkamin-control/webflash/)**
+
+Pour une mise à jour, répondre « non » à « Effacer l'appareil » : le Wi-Fi, le serveur MQTT et le planning de secours sont conservés.
+
+![Installation du firmware](docs/screenshots/installation_firmware.png)
 
 ### Installation
 
@@ -56,7 +67,7 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 2. Vérifier les entités trouvées sur le même appareil et choisir les options :
    - **Présence** : maison vide si l'alarme est en mode absence ou vacances, la personne absente, la zone vide ou l'interrupteur coupé.
    - **Sujet MQTT du planning de secours** : proposé d'après l'identifiant de l'ESP32 (`edilkamin/<id>/schedule`). Vide = pas d'envoi.
-   - **Format du planning de secours** : `v2` (jusqu'à 10 plages, jours et silence) ou `v1` pour le firmware akoonet-13 (5 plages).
+   - **Format du planning de secours** : `v2` (jusqu'à 10 plages, jours et silence, firmware 2026.11.1 ou plus récent) ou `v1` pour le firmware akoonet-13 (5 plages).
    - **Suivi Stock Pellet** et **sacs versés par remplissage** (affichés seulement si Suivi Stock Pellet est installé).
    - **Mode observation**.
 
@@ -75,6 +86,12 @@ climate: climate.poele
 |---|---|
 | ![Carte](docs/screenshots/carte.png) | ![Carte sombre](docs/screenshots/carte_sombre.png) |
 
+- **Image du poêle** : choisie dans l'éditeur visuel de la carte. Les flammes, les ventilateurs et l'écran s'animent selon l'état du poêle.
+
+| Edilkamin Bild 9+ (défaut) | Dessin simple | Image personnelle | Éditeur |
+|---|---|---|---|
+| ![Bild 9+](docs/screenshots/image_bild9.png) | ![Dessin simple](docs/screenshots/image_dessin_simple.png) | ![Image personnelle](docs/screenshots/image_personnelle.png) | ![Éditeur](docs/screenshots/editeur.png) |
+
 - Les étiquettes d'une programmation (Puissance, V1, V2, Stand-by, Silence) changent la valeur à chaque appui.
 - **Gérer les programmations** ouvre le menu : liste, modification, création et suppression.
 
@@ -89,6 +106,9 @@ Options de la carte :
 | `climate` | obligatoire | Thermostat du poêle |
 | `mode` | `full` | `planning` : affiche seulement le menu des programmations (pour une vue dédiée) |
 | `title` | Poêle | Titre |
+| `image` | `bild9` | `bild9` (Edilkamin Bild 9+), `generic` (dessin simple) ou adresse d'une image (ex. `/local/poele.svg`) |
+| `image_window` | — | Vitre d'une image personnelle, en % d'un cadre 140 × 212 : `x`, `y`, `width`, `height` |
+| `image_calibration` | `false` | Affiche le cadre de la vitre pour la régler |
 | `show_header`, `show_modes`, `show_planning`, `show_tracking`, `show_graph` | `true` | Sections affichées |
 | `status`, `fan2`, `relax`, `standby`, `real_power`, `real_fan1`, `real_fan2`, `pellet`, `ignitions`, `alarm`, `alarm_label` | détection | Entités du firmware, si la détection automatique ne les trouve pas |
 
@@ -148,7 +168,7 @@ Message retenu, QoS 1 : `{"v":2,"p":[{"a":1,"d":390,"f":510,"c":205,"m":0,"pu":0
 
 ### Limites connues
 
-- Le format `v2` du planning de secours demande un firmware qui le lit ; avec akoonet-13, choisir `v1`.
+- Le format `v2` du planning de secours demande le firmware Edilkamin Control 2026.11.1 ou plus récent ; avec akoonet-13, choisir `v1`.
 - Les programmations existantes faites avec des entrées (input_*) ne sont pas importées automatiquement : utiliser le service `add_profile`.
 
 ---
@@ -178,13 +198,22 @@ It does not touch the stove itself: everything goes through the entities publish
 - **Pellet hopper**: burn hours since refill, average hopper duration, estimated autonomy, alert threshold.
 - **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (optional, when installed): the “Hopper refilled” button logs the consumption in Suivi Stock Pellet, a consumption logged in Suivi Stock Pellet resets the hopper counter, and the stock autonomy is computed.
 - **Observe mode**: the integration computes everything but sends nothing to the stove; commands are written to the logbook. Handy to run it next to existing automations before switching over.
-- **Lovelace card** included and loaded automatically.
+- **Lovelace card** included and loaded automatically, with a visual editor and a choice of stove picture (Edilkamin Bild 9+ by default, simple drawing or your own picture).
+- **ESP32 firmware** installed and updated in one click from the browser.
 
 ### Requirements
 
 - Home Assistant 2024.11 or newer.
 - An Edilkamin stove driven by the ESP32 (Edilkamin_BT firmware or derived): a thermostat (`climate`), a status sensor and a Standby switch published over MQTT. Fan 2, Relax and Chrono are optional.
 - MQTT, only for the fallback schedule.
+
+### ESP32 firmware
+
+One-click install and update (Chrome or Edge on a computer, Wemos D1 Mini ESP32 plugged over USB):
+
+**👉 [https://akoonet-homeassistant.github.io/edilkamin-control/webflash/](https://akoonet-homeassistant.github.io/edilkamin-control/webflash/)**
+
+For an update, answer “no” to “Erase device”: Wi-Fi, MQTT server and fallback schedule are kept.
 
 ### Installation
 
@@ -202,7 +231,7 @@ It does not touch the stove itself: everything goes through the entities publish
 2. Check the entities found on the same device and choose the options:
    - **Presence**: empty house when the alarm is armed away or vacation, the person is away, the zone is empty or the switch is off.
    - **Fallback schedule MQTT topic**: suggested from the ESP32 identifier (`edilkamin/<id>/schedule`). Empty = nothing sent.
-   - **Fallback schedule format**: `v2` (up to 10 slots, days and silent mode) or `v1` for the akoonet-13 firmware (5 slots).
+   - **Fallback schedule format**: `v2` (up to 10 slots, days and silent mode, firmware 2026.11.1 or newer) or `v1` for the akoonet-13 firmware (5 slots).
    - **Suivi Stock Pellet** and **bags poured per refill** (shown only when Suivi Stock Pellet is installed).
    - **Observe mode**.
 
@@ -217,6 +246,7 @@ type: custom:edilkamin-control-card
 climate: climate.stove
 ```
 
+- **Stove picture**: chosen in the card's visual editor. Flames, fans and display follow the stove state.
 - The tags of a schedule (Power, V1, V2, Standby, Silent) change the value on each tap.
 - **Manage schedules** opens the menu: list, edit, create and delete.
 
@@ -227,6 +257,9 @@ Card options:
 | `climate` | required | Stove thermostat |
 | `mode` | `full` | `planning`: shows only the schedule menu (for a dedicated view) |
 | `title` | Stove | Title |
+| `image` | `bild9` | `bild9` (Edilkamin Bild 9+), `generic` (simple drawing) or a picture URL (e.g. `/local/stove.svg`) |
+| `image_window` | — | Glass of your own picture, in % of a 140 × 212 frame: `x`, `y`, `width`, `height` |
+| `image_calibration` | `false` | Shows the glass frame to adjust it |
 | `show_header`, `show_modes`, `show_planning`, `show_tracking`, `show_graph` | `true` | Displayed sections |
 | `status`, `fan2`, `relax`, `standby`, `real_power`, `real_fan1`, `real_fan2`, `pellet`, `ignitions`, `alarm`, `alarm_label` | detection | Firmware entities, when automatic detection does not find them |
 
@@ -286,7 +319,7 @@ Retained message, QoS 1: `{"v":2,"p":[{"a":1,"d":390,"f":510,"c":205,"m":0,"pu":
 
 ### Known limits
 
-- The `v2` fallback schedule format needs a firmware that reads it; with akoonet-13, choose `v1`.
+- The `v2` fallback schedule format needs the Edilkamin Control firmware 2026.11.1 or newer; with akoonet-13, choose `v1`.
 - Existing schedules built with helpers (input_*) are not imported automatically: use the `add_profile` service.
 
 ---
