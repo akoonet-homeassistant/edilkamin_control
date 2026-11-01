@@ -1,7 +1,7 @@
 # Edilkamin Control
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
-![Version](https://img.shields.io/github/v/release/akoonet-homeassistant/edilkamin-control)
+![Version](https://img.shields.io/github/v/release/akoonet-homeassistant/edilkamin_control)
 
 🇫🇷 [Français](#français) · 🇬🇧 [English](#english)
 
@@ -45,7 +45,7 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 
 **Installation et mise à jour en un clic** depuis le navigateur (Chrome ou Edge sur ordinateur, ESP32 branché en USB) :
 
-**👉 [https://akoonet-homeassistant.github.io/edilkamin-control/webflash/](https://akoonet-homeassistant.github.io/edilkamin-control/webflash/)**
+**👉 [https://akoonet-homeassistant.github.io/edilkamin_control/webflash/](https://akoonet-homeassistant.github.io/edilkamin_control/webflash/)**
 
 ![Installation du firmware](docs/screenshots/installation_firmware.png)
 
@@ -56,9 +56,9 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 
 | Fichier | Adresse |
 |---|---|
-| [`bootloader.bin`](https://github.com/akoonet-homeassistant/edilkamin-control/raw/main/webflash/bootloader.bin) | `0x1000` |
-| [`partitions.bin`](https://github.com/akoonet-homeassistant/edilkamin-control/raw/main/webflash/partitions.bin) | `0x8000` |
-| [`firmware.bin`](https://github.com/akoonet-homeassistant/edilkamin-control/raw/main/webflash/firmware.bin) | `0x10000` |
+| [`bootloader.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/bootloader.bin) | `0x1000` |
+| [`partitions.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/partitions.bin) | `0x8000` |
+| [`firmware.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/firmware.bin) | `0x10000` |
 
 ```bash
 # Première installation
@@ -70,7 +70,7 @@ esptool.py --chip esp32 write_flash 0x10000 firmware.bin
 
 ### Installation
 
-1. HACS → menu ⋮ en haut à droite → **Dépôts personnalisés** → dépôt `https://github.com/akoonet-homeassistant/edilkamin-control`, type **Intégration** → **Ajouter**.
+1. HACS → menu ⋮ en haut à droite → **Dépôts personnalisés** → dépôt `https://github.com/akoonet-homeassistant/edilkamin_control`, type **Intégration** → **Ajouter**.
 2. Installer **Edilkamin Control**, puis redémarrer Home Assistant.
 3. Paramètres → Appareils et services → **Ajouter une intégration** → Edilkamin Control.
 
@@ -228,7 +228,7 @@ It does not touch the stove itself: everything goes through the entities publish
 
 **One-click install and update** from the browser (Chrome or Edge on a computer, ESP32 plugged over USB):
 
-**👉 [https://akoonet-homeassistant.github.io/edilkamin-control/webflash/](https://akoonet-homeassistant.github.io/edilkamin-control/webflash/)**
+**👉 [https://akoonet-homeassistant.github.io/edilkamin_control/webflash/](https://akoonet-homeassistant.github.io/edilkamin_control/webflash/)**
 
 - **First install**: hold the ESP32 **BOOT** button while plugging the USB cable, click **Install**, answer **yes** to “Erase device”. Then join the `Edilkamin_BT_AP` Wi-Fi to enter your home Wi-Fi and MQTT broker, and put the stove in Bluetooth pairing mode. The “Edilkamin” device shows up in Home Assistant (MQTT).
 - **Update**: click **Install** and answer **no** to “Erase device”: Wi-Fi, MQTT broker and fallback schedule are kept. The installed version is shown in Home Assistant (Edilkamin device, “Software version”).
@@ -237,9 +237,9 @@ It does not touch the stove itself: everything goes through the entities publish
 
 | File | Address |
 |---|---|
-| [`bootloader.bin`](https://github.com/akoonet-homeassistant/edilkamin-control/raw/main/webflash/bootloader.bin) | `0x1000` |
-| [`partitions.bin`](https://github.com/akoonet-homeassistant/edilkamin-control/raw/main/webflash/partitions.bin) | `0x8000` |
-| [`firmware.bin`](https://github.com/akoonet-homeassistant/edilkamin-control/raw/main/webflash/firmware.bin) | `0x10000` |
+| [`bootloader.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/bootloader.bin) | `0x1000` |
+| [`partitions.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/partitions.bin) | `0x8000` |
+| [`firmware.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/firmware.bin) | `0x10000` |
 
 ```bash
 # First install
@@ -251,7 +251,7 @@ esptool.py --chip esp32 write_flash 0x10000 firmware.bin
 
 ### Installation
 
-1. HACS → ⋮ menu (top right) → **Custom repositories** → repository `https://github.com/akoonet-homeassistant/edilkamin-control`, type **Integration** → **Add**.
+1. HACS → ⋮ menu (top right) → **Custom repositories** → repository `https://github.com/akoonet-homeassistant/edilkamin_control`, type **Integration** → **Add**.
 2. Install **Edilkamin Control**, then restart Home Assistant.
 3. Settings → Devices & services → **Add integration** → Edilkamin Control.
 
