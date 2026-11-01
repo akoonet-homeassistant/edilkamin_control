@@ -37,6 +37,8 @@ from .const import (
     CONF_CHRONO,
     CONF_CLIMATE,
     CONF_FAN2,
+    CONF_IGNITIONS,
+    HISTORY_DAYS,
     CONF_MQTT_TOPIC,
     CONF_OBSERVE,
     CONF_PELLET_ENTRY,
@@ -137,6 +139,8 @@ class EdilkaminController:
         self.profiles: list[dict[str, Any]] = []
         self.state: dict[str, Any] = {}
         self.reservoir: dict[str, Any] = {}
+        self.ignitions: list[dict[str, Any]] = []
+        self.ignitions_entity: str | None = None
         self._lock = asyncio.Lock()
         self._unsubs: list = []
         self._slot_unsub = None
@@ -190,6 +194,7 @@ class EdilkaminController:
             "alert_threshold": 0.0,
             **data.get("state", {}),
         }
+        self.ignitions = list(data.get("ignitions") or [])
         self.reservoir = {"hours": 0.0, "since": None, "durations": [], "last_load": None, "alerted": False,
                           **data.get("reservoir", {})}
         for p in self.profiles:
@@ -237,7 +242,7 @@ class EdilkaminController:
     def async_save(self) -> None:
         """Enregistrement différé (regroupe les écritures)."""
         self._store.async_delay_save(
-            lambda: {"profiles": self.profiles, "state": self.state, "reservoir": self.reservoir}, 2
+            lambda: {"profiles": self.profiles, "state": self.state, "reservoir": self.reservoir, "ignitions": self.ignitions}, 2
         )
 
     @callback
@@ -312,8 +317,14 @@ class EdilkaminController:
     # ------------------------------------------------------------------ démarrage / arrêt
     async def async_start(self) -> None:
         hass = self.hass
+        # Compteur d'allumages : configuré, sinon cherché sur l'appareil du thermostat
+        self.ignitions_entity = self.ent(CONF_IGNITIONS)
+        if not self.ignitions_entity:
+            from .config_flow import detect_siblings  # noqa: PLC0415
+
+            self.ignitions_entity = detect_siblings(hass, self.ent(CONF_CLIMATE)).get(CONF_IGNITIONS)
         watch = [e for e in (self.ent(CONF_CLIMATE), self.ent(CONF_FAN2), self.ent(CONF_STANDBY),
-                             self.ent(CONF_RELAX), self.ent(CONF_STATUS)) if e]
+                             self.ent(CONF_RELAX), self.ent(CONF_STATUS), self.ignitions_entity) if e]
         self._unsubs.append(async_track_state_change_event(hass, watch, self._on_stove_event))
         # Ordres donnés par un utilisateur (carte, tableau de bord, application, assistant vocal)
         self._unsubs.append(hass.bus.async_listen(EVENT_CALL_SERVICE, self._on_call_service))
@@ -354,7 +365,7 @@ class EdilkaminController:
             if u:
                 u()
             setattr(self, name, None)
-        await self._store.async_save({"profiles": self.profiles, "state": self.state, "reservoir": self.reservoir})
+        await self._store.async_save({"profiles": self.profiles, "state": self.state, "reservoir": self.reservoir, "ignitions": self.ignitions})
 
     # ------------------------------------------------------------------ plages horaires
     def target(self, now: datetime | None = None) -> str | None:
@@ -634,6 +645,8 @@ class EdilkaminController:
             return
         if eid == self.ent(CONF_STATUS) or (not self.ent(CONF_STATUS) and eid == self.ent(CONF_CLIMATE)):
             self._on_status(old, new)
+        if self.ignitions_entity and eid == self.ignitions_entity:
+            self._on_ignition_counter(old, new)
         if eid == self.ent(CONF_CLIMATE):
             if old is not None and old.attributes.get("temperature") != new.attributes.get("temperature"):
                 self._detect_override(old, new)
@@ -710,9 +723,53 @@ class EdilkaminController:
         self.async_save()
         self.notify()
 
+    # ------------------------------------------------------------------ historique des allumages
+    def _on_ignition_counter(self, old: State | None, new: State) -> None:
+        """Allumage = le compteur du poêle augmente (fiable même après une coupure de l'ESP32)."""
+        try:
+            before, after = int(float(old.state)), int(float(new.state))
+        except (AttributeError, TypeError, ValueError):
+            return
+        if after > before:
+            self._record_start(dt_util.utcnow())
+
+    def _record_start(self, when: datetime) -> None:
+        if self.ignitions and self.ignitions[0].get("end") is None:
+            self.ignitions[0]["end"] = "?"  # arrêt précédent non vu
+        self.ignitions.insert(0, {"start": when.isoformat(), "end": None})
+        self._prune_ignitions()
+        self.async_save()
+        self.notify()
+
+    def _record_stop(self, when: datetime) -> None:
+        if self.ignitions and self.ignitions[0].get("end") is None:
+            self.ignitions[0]["end"] = when.isoformat()
+            self.async_save()
+            self.notify()
+
+    def _prune_ignitions(self) -> None:
+        """Garde les allumages des derniers jours (aujourd'hui compris)."""
+        start = dt_util.start_of_local_day() - timedelta(days=HISTORY_DAYS - 1)
+        keep = []
+        for i, rec in enumerate(self.ignitions):
+            t = dt_util.parse_datetime(rec.get("start") or "")
+            if t is None or (t < start and i > 0):
+                continue
+            keep.append(rec)
+        self.ignitions = keep[:60]
+
+    def ignition_history(self) -> list[dict[str, Any]]:
+        self._prune_ignitions()
+        return self.ignitions
+
     def _on_status(self, old: State | None, new: State) -> None:
         now = dt_util.utcnow()
         self._reservoir_status(new.state, now)
+        if new.state in (STATUS_OFF, *STATUS_STOPPING):
+            self._record_stop(now)
+        elif not self.ignitions_entity and old is not None and old.state == STATUS_OFF \
+                and new.state not in STATUS_NOT_BURNING:
+            self._record_start(now)  # pas de compteur : sortie de « Off »
         was = old.state if old else None
         if was in STATUS_UNAVAILABLE and new.state not in STATUS_UNAVAILABLE:
             if self._esp_unsub:
@@ -938,7 +995,7 @@ class EdilkaminController:
         await self._structure_changed()
 
     async def _structure_changed(self) -> None:
-        await self._store.async_save({"profiles": self.profiles, "state": self.state, "reservoir": self.reservoir})
+        await self._store.async_save({"profiles": self.profiles, "state": self.state, "reservoir": self.reservoir, "ignitions": self.ignitions})
         self.hass.config_entries.async_schedule_reload(self.entry.entry_id)
 
     # ------------------------------------------------------------------ planning de secours (ESP32)

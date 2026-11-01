@@ -22,7 +22,8 @@
           "schedule_format": "Fallback schedule format",
           "pellet_entry": "Suivi Stock Pellet",
           "bags_per_fill": "Bags poured per refill",
-          "observe": "Observe mode (computes without driving the stove)"
+          "observe": "Observe mode (computes without driving the stove)",
+          "ignitions": "Stove ignition counter"
         },
         "data_description": {
           "presence": "Empty house: alarm armed away or vacation, person away, empty zone, switch off. Used by each schedule's “If away” setting.",
@@ -51,7 +52,8 @@
           "schedule_format": "Fallback schedule format",
           "pellet_entry": "Suivi Stock Pellet",
           "bags_per_fill": "Bags poured per refill",
-          "observe": "Observe mode (computes without driving the stove)"
+          "observe": "Observe mode (computes without driving the stove)",
+          "ignitions": "Stove ignition counter"
         },
         "data_description": {
           "presence": "Empty house: alarm armed away or vacation, person away, empty zone, switch off. Used by each schedule's “If away” setting.",
@@ -171,6 +173,9 @@
       },
       "stock_autonomy": {
         "name": "Stock autonomy"
+      },
+      "last_ignition": {
+        "name": "Last ignition"
       }
     },
     "binary_sensor": {

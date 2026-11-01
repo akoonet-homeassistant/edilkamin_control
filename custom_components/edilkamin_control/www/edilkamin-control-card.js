@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.4";
+const ECC_VERSION = "2026.11.5";
 
 const ECC_I18N = {
   fr: {
@@ -34,7 +34,10 @@ const ECC_I18N = {
     last_res: "Durée du dernier réservoir", avg_res: "Durée moyenne d’un réservoir", res_auto: "Autonomie estimée du réservoir",
     alert_after: "Alerte après (0 = désactivée)", stove_reserve: "Réserve signalée par le poêle", stock_left: "Stock restant (Suivi Stock Pellet)",
     stock_auto: "Autonomie du stock", filled: "Réservoir rempli", poured: "J’ai versé", bags: "sac(s)", confirm_fill: "Confirmer ?",
-    reserve_low: "Réserve", ok: "OK", pending2: "après 2 réservoirs", bag_unit: "sacs", bag_one: "sac", priority: "En cas de chevauchement, la programmation la plus haute dans la liste l’emporte.", back: "Retour",
+    reserve_low: "Réserve", ok: "OK", pending2: "après 2 réservoirs", bag_unit: "sacs", bag_one: "sac",
+    ign_title: "Allumages des 3 derniers jours", ign_on: "Allumage", ign_off: "Arrêt", duration: "Durée", running: "en cours",
+    today: "Aujourd’hui", yesterday: "Hier", total: "Total", average: "Moyenne", no_ign: "Aucun allumage enregistré.", counter: "Compteur du poêle",
+    ign_one: "allumage", ign_many: "allumages", priority: "En cas de chevauchement, la programmation la plus haute dans la liste l’emporte.", back: "Retour",
   },
   en: {
     title: "Stove",
@@ -63,7 +66,10 @@ const ECC_I18N = {
     last_res: "Last hopper duration", avg_res: "Average hopper duration", res_auto: "Estimated hopper autonomy",
     alert_after: "Alert after (0 = off)", stove_reserve: "Reserve reported by the stove", stock_left: "Stock left (Suivi Stock Pellet)",
     stock_auto: "Stock autonomy", filled: "Hopper refilled", poured: "I poured", bags: "bag(s)", confirm_fill: "Confirm?",
-    reserve_low: "Reserve", ok: "OK", pending2: "after 2 hoppers", bag_unit: "bags", bag_one: "bag", priority: "When schedules overlap, the one highest in the list wins.", back: "Back",
+    reserve_low: "Reserve", ok: "OK", pending2: "after 2 hoppers", bag_unit: "bags", bag_one: "bag",
+    ign_title: "Ignitions of the last 3 days", ign_on: "Ignition", ign_off: "Stop", duration: "Duration", running: "running",
+    today: "Today", yesterday: "Yesterday", total: "Total", average: "Average", no_ign: "No ignition recorded.", counter: "Stove counter",
+    ign_one: "ignition", ign_many: "ignitions", priority: "When schedules overlap, the one highest in the list wins.", back: "Back",
   },
 };
 
@@ -102,6 +108,7 @@ const ECC_PLANNER_KEYS = {
   res_alert: "reservoir_alert",    // number : seuil d'alerte (h)
   res_filled: "reservoir_filled",  // button : réservoir rempli
   res_low: "reservoir_low",        // binary_sensor : réservoir bientôt vide
+  ign_hist: "last_ignition",       // sensor : dernier allumage (attribut history, 3 jours)
 };
 const ECC_PROFILE_KEYS = ["profile_active", "profile_start", "profile_end", "profile_setpoint", "profile_mode", "profile_name",
   "profile_power", "profile_fan1", "profile_fan2", "profile_relax", "profile_absent"];
@@ -612,6 +619,7 @@ class EdilkaminControlCard extends HTMLElement {
   _manager(overlay) {
     const pg = this._page ?? "list";
     if (pg === "pellet") return this._pelletSheet(overlay);
+    if (pg === "ignitions") return this._ignitionSheet(overlay);
     const close = overlay ? `<button class="round" data-act="page" data-page="close"><ha-icon icon="mdi:close"></ha-icon></button>` : "";
     if (pg === "list") {
       const cur = this._v("current_profile");
@@ -763,7 +771,8 @@ class EdilkaminControlCard extends HTMLElement {
     <div class="sec-title">${this._t("tracking")}</div>
     ${graph}
     <div class="tiles">
-      ${this._resolved.ignitions ? tile("mdi:fire-circle", this._t("ignitions"), ign ?? "—", "#f06b21", this._resolved.ignitions) : ""}
+      ${this._resolved.ignitions || this._resolved.ign_hist ? `<div class="tile" data-act="page" data-page="ignitions">
+        <ha-icon icon="mdi:fire-circle" style="color:#f06b21"></ha-icon><span class="tl">${this._t("ignitions")}</span><span class="tv">${ign ?? "—"}</span></div>` : ""}
       ${this._resolved.alarm ? tile(al ? "mdi:alert" : "mdi:check-circle", this._t("alarm_now"), al ? (lab || this._t("alarm")) : this._t("none"), al ? "#e53935" : "#2ea55f", this._resolved.alarm_label || this._resolved.alarm) : ""}
       ${this._resolved.pellet || this._resolved.res_hours ? this._pelletTile(low) : ""}
     </div>`;
@@ -777,6 +786,47 @@ class EdilkaminControlCard extends HTMLElement {
     return `<div class="tile" data-act="page" data-page="pellet">
       <ha-icon icon="${warn ? "mdi:alert-circle-outline" : "mdi:grain"}" style="color:${col}"></ha-icon><span class="tl">${this._t("pellets")}</span>
       <span class="tv" style="${warn ? "color:#e67e22" : ""}">${val}</span></div>`;
+  }
+
+  /* Menu « Allumages » : allumages des 3 derniers jours, arrêt, durée, total et moyenne */
+  _ignitionSheet(overlay) {
+    const hist = this._s("ign_hist")?.attributes?.history || [];
+    const lang = this._hass?.locale?.language || "fr";
+    const hm = (d) => d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+    const dur = (m) => (m == null ? "—" : m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}` : `${m} min`);
+    const dayKey = (d) => d.toLocaleDateString("sv");
+    const today = new Date(), yest = new Date(Date.now() - 86400000);
+    const dayLabel = (d) => dayKey(d) === dayKey(today) ? this._t("today") : dayKey(d) === dayKey(yest) ? this._t("yesterday")
+      : d.toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long" });
+    const days = new Map();
+    let tot = 0, n = 0;
+    for (const r of hist) {
+      const s = new Date(r.start);
+      if (isNaN(s)) continue;
+      let e = null, endTxt;
+      if (r.end === null || r.end === undefined) { e = new Date(); endTxt = `<i>${this._t("running")}</i>`; }
+      else if (r.end === "?") { endTxt = "?"; }
+      else { e = new Date(r.end); endTxt = hm(e); }
+      const m = e ? Math.max(0, Math.round((e - s) / 60000)) : null;
+      if (m != null) { tot += m; n++; }
+      const k = dayKey(s);
+      if (!days.has(k)) days.set(k, { label: dayLabel(s), rows: [], tot: 0 });
+      const g = days.get(k);
+      g.rows.push(`<tr><td>${hm(s)}</td><td>${endTxt}</td><td>${dur(m)}</td></tr>`);
+      g.tot += m || 0;
+    }
+    const close = overlay ? `<button class="round" data-act="page" data-page="close"><ha-icon icon="mdi:close"></ha-icon></button>` : "";
+    const cnt = this._v("ignitions");
+    let body = "";
+    if (!days.size) body = `<div class="hint">${this._t("no_ign")}</div>`;
+    for (const g of days.values()) {
+      const k = g.rows.length;
+      body += `<div class="dayh"><b>${g.label}</b><span>${k} ${this._t(k > 1 ? "ign_many" : "ign_one")} · ${dur(g.tot)}</span></div>
+        <table class="igt"><thead><tr><th>${this._t("ign_on")}</th><th>${this._t("ign_off")}</th><th>${this._t("duration")}</th></tr></thead><tbody>${g.rows.join("")}</tbody></table>`;
+    }
+    const foot = days.size ? `<div class="igsum"><span>${this._t("total")}</span><b>${dur(tot)}</b><span>${this._t("average")}</span><b>${dur(n ? Math.round(tot / n) : 0)}</b>
+      ${cnt !== undefined ? `<span>${this._t("counter")}</span><b>${cnt}</b>` : ""}</div>` : "";
+    return `<div class="mhead"><ha-icon icon="mdi:fire-circle" class="hicon"></ha-icon><b>${this._t("ign_title")}</b>${close}</div>${body}${foot}`;
   }
 
   /* Menu « Réservoir de granulés » : mêmes informations que le menu du poêle */
@@ -1092,6 +1142,14 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .tval { position: relative; min-width: 50px; text-align: center; font-weight: 600; font-size: 15px; cursor: pointer; }
 .tval input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
 .plist { display: flex; flex-direction: column; }
+.dayh { display: flex; justify-content: space-between; align-items: baseline; margin: 12px 2px 4px; font-size: 14px; }
+.dayh b::first-letter { text-transform: uppercase; }
+.dayh span { font-size: 12px; color: var(--secondary-text-color); }
+.igt { width: 100%; border-collapse: collapse; font-size: 14px; }
+.igt th { font-size: 11px; font-weight: 600; color: var(--secondary-text-color); text-align: center; padding: 4px; }
+.igt td { text-align: center; padding: 7px 4px; border-top: 1px solid var(--divider-color, rgba(127,127,127,.2)); font-variant-numeric: tabular-nums; }
+.igt td i { color: var(--ecc-accent); font-style: normal; font-weight: 600; }
+.igsum { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin-top: 14px; padding: 12px; border-radius: 12px; background: var(--ecc-soft); font-size: 14px; }
 .prow { display: grid; grid-template-columns: 24px 1fr auto auto; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--divider-color, rgba(127,127,127,.2)); font-size: 14px; }
 .prow ha-icon { color: var(--secondary-text-color); }
 .prow b { font-weight: 600; }

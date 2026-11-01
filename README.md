@@ -33,6 +33,7 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 - **Planning de secours** : publié en MQTT (message retenu) à chaque modification.
 - **Réservoir de granulés** : heures de chauffe depuis le remplissage, durée du dernier réservoir, durée moyenne, autonomie estimée, seuil d'alerte, réserve signalée par le poêle. Tout est regroupé dans le menu de la tuile Granulés de la carte.
 - **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (facultatif, s'il est installé) : le bouton « Réservoir rempli » enregistre la consommation dans Suivi Stock Pellet, une consommation saisie dans Suivi Stock Pellet remet le compteur du réservoir à zéro, et l'autonomie du stock est calculée.
+- **Historique des allumages** : les allumages des 3 derniers jours (heure d'allumage, d'arrêt, durée, total et moyenne), d'après le compteur d'allumages du poêle. Affiché par la tuile Allumages de la carte.
 - **Mode observation** : l'intégration calcule tout mais n'envoie rien au poêle ; les ordres sont inscrits dans le journal. Pratique pour la faire tourner à côté d'automatisations existantes avant de basculer.
 - **Carte Lovelace** fournie et chargée automatiquement, avec éditeur visuel et choix de l'image du poêle (Edilkamin Bild 9+ par défaut, dessin simple ou image personnelle).
 - **Firmware ESP32** installable et mis à jour en un clic depuis le navigateur.
@@ -84,6 +85,7 @@ esptool.py --chip esp32 write_flash 0x10000 firmware.bin
 
 1. Choisir le thermostat du poêle.
 2. Vérifier les entités trouvées sur le même appareil et choisir les options :
+   - **Compteur d'allumages du poêle** : trouvé automatiquement ; sert à l'historique des allumages.
    - **Présence** : maison vide si l'alarme est en mode absence ou vacances, la personne absente, la zone vide ou l'interrupteur coupé.
    - **Sujet MQTT du planning de secours** : proposé d'après l'identifiant de l'ESP32 (`edilkamin/<id>/schedule`). Vide = pas d'envoi.
    - **Format du planning de secours** : `v2` (jusqu'à 10 plages, jours et silence, firmware 2026.11.1 ou plus récent) ou `v1` pour le firmware akoonet-13 (5 plages).
@@ -115,6 +117,9 @@ climate: climate.poele
 - **Classement** : dans le menu des programmations, les flèches ▲ ▼ changent l'ordre (la plus haute l'emporte en cas de chevauchement).
 - **Heures** : début et fin se règlent avec − / + par pas de 5 minutes (appui long pour défiler) ; un appui sur l'heure ouvre le sélecteur.
 - **Tuile Granulés** : un appui ouvre le menu du réservoir, avec le bouton de remplissage (« J'ai versé 1 sac » avec Suivi Stock Pellet).
+- **Tuile Allumages** : un appui ouvre les allumages des 3 derniers jours, regroupés par jour.
+
+![Allumages](docs/screenshots/menu_allumages.png)
 
 | Classement | Heures | Granulés |
 |---|---|---|
@@ -150,6 +155,7 @@ Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
 | `select.poele_programmation_forcee` | Automatique, ou programmation forcée jusqu'au prochain changement de plage |
 | `sensor.poele_programmation_en_cours` | Programmation appliquée (attributs `profile`, `substitution`, `occupied`, `resync`, `observe`) |
 | `sensor.poele_prochain_changement` | Prochain début ou fin de plage |
+| `sensor.poele_dernier_allumage` | Dernier allumage (attribut `history` : allumages des 3 derniers jours, début et arrêt) |
 | `switch.poele_derogation_de_consigne` | Dérogation de consigne (attribut `reference`) |
 | `switch.poele_reglages_manuels` | Réglages manuels ; le couper = « Rendre la main » |
 | `switch.poele_priorite_silence_manuel` | Silence activé à la main, prioritaire jusqu'à minuit |
@@ -223,6 +229,7 @@ It does not touch the stove itself: everything goes through the entities publish
 - **Fallback schedule**: published over MQTT (retained) on every change.
 - **Pellet hopper**: burn hours since refill, last and average hopper duration, estimated autonomy, alert threshold, reserve reported by the stove. Everything is grouped in the menu of the card's Pellets tile.
 - **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (optional, when installed): the “Hopper refilled” button logs the consumption in Suivi Stock Pellet, a consumption logged in Suivi Stock Pellet resets the hopper counter, and the stock autonomy is computed.
+- **Ignition history**: ignitions of the last 3 days (start, stop, duration, total and average), from the stove ignition counter. Shown by the card's Ignitions tile.
 - **Observe mode**: the integration computes everything but sends nothing to the stove; commands are written to the logbook. Handy to run it next to existing automations before switching over.
 - **Lovelace card** included and loaded automatically, with a visual editor and a choice of stove picture (Edilkamin Bild 9+ by default, simple drawing or your own picture).
 - **ESP32 firmware** installed and updated in one click from the browser.
@@ -272,6 +279,7 @@ esptool.py --chip esp32 write_flash 0x10000 firmware.bin
 
 1. Pick the stove thermostat.
 2. Check the entities found on the same device and choose the options:
+   - **Stove ignition counter**: found automatically; used for the ignition history.
    - **Presence**: empty house when the alarm is armed away or vacation, the person is away, the zone is empty or the switch is off.
    - **Fallback schedule MQTT topic**: suggested from the ESP32 identifier (`edilkamin/<id>/schedule`). Empty = nothing sent.
    - **Fallback schedule format**: `v2` (up to 10 slots, days and silent mode, firmware 2026.11.1 or newer) or `v1` for the akoonet-13 firmware (5 slots).
@@ -294,6 +302,7 @@ climate: climate.stove
 - **Ordering**: in the schedule menu, the ▲ ▼ arrows change the order (the highest wins when schedules overlap).
 - **Times**: start and end are set with − / + in 5-minute steps (hold to scroll); tapping the time opens the picker.
 - **Pellets tile**: a tap opens the hopper menu, with the refill button (“I poured 1 bag” with Suivi Stock Pellet).
+- **Ignitions tile**: a tap opens the ignitions of the last 3 days, grouped by day.
 - **Manage schedules** opens the menu: list, edit, create and delete.
 
 Card options:
@@ -321,6 +330,7 @@ The entity IDs depend on the entry name and on the Home Assistant language (show
 | `select.stove_forced_schedule` | Automatic, or a schedule forced until the next slot change |
 | `sensor.stove_current_schedule` | Applied schedule (attributes `profile`, `substitution`, `occupied`, `resync`, `observe`) |
 | `sensor.stove_next_change` | Next slot start or end |
+| `sensor.stove_last_ignition` | Last ignition (attribute `history`: ignitions of the last 3 days, start and stop) |
 | `switch.stove_setpoint_override` | Setpoint override (attribute `reference`) |
 | `switch.stove_manual_settings` | Manual settings; turning it off = “Give back” |
 | `switch.stove_manual_silent_priority` | Silent mode turned on by hand, priority until midnight |

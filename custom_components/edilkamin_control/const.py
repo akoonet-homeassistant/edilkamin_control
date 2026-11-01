@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "edilkamin_control"
-VERSION = "2026.11.4"
+VERSION = "2026.11.5"
 
 # Clés de configuration (entrée de configuration / options)
 CONF_CLIMATE = "climate"
@@ -18,6 +18,7 @@ CONF_PELLET_ENTRY = "pellet_entry"
 CONF_BAGS_PER_FILL = "bags_per_fill"
 CONF_OBSERVE = "observe"
 CONF_SCHEDULE_FORMAT = "schedule_format"
+CONF_IGNITIONS = "ignitions"
 
 # Entités du firmware recherchées sur le même appareil que le thermostat
 DEVICE_SUFFIXES: dict[str, tuple[str, tuple[str, ...]]] = {
@@ -26,6 +27,7 @@ DEVICE_SUFFIXES: dict[str, tuple[str, tuple[str, ...]]] = {
     CONF_STANDBY: ("switch", ("_standby",)),
     CONF_RELAX: ("switch", ("_relax",)),
     CONF_CHRONO: ("switch", ("_chrono",)),
+    CONF_IGNITIONS: ("sensor", ("_nombre_d_allumages", "_ignitions")),
 }
 
 # Modes d'une programmation
@@ -51,7 +53,8 @@ VERIFY_DELAY = 240  # vérification 4 min après un changement de plage
 ESP_BACK_DELAY = 60  # retour de l'ESP32 : 1 min de stabilité avant resynchronisation
 SCHEDULE_DEBOUNCE = 10  # regroupement des modifications avant envoi du planning
 
-MAX_PROFILES = 10  # limite du planning de secours (firmware)
+MAX_PROFILES = 10
+HISTORY_DAYS = 3  # historique des allumages gardé  # limite du planning de secours (firmware)
 
 # Déclencheurs internes de l'application des profils
 K_SLOT = "slot"  # début ou fin de plage

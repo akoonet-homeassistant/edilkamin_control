@@ -16,6 +16,7 @@ from .const import (
     CONF_CHRONO,
     CONF_CLIMATE,
     CONF_FAN2,
+    CONF_IGNITIONS,
     CONF_MQTT_TOPIC,
     CONF_OBSERVE,
     CONF_PELLET_ENTRY,
@@ -75,6 +76,7 @@ def entities_schema(hass: HomeAssistant, d: dict[str, Any]) -> vol.Schema:
         opt(CONF_FAN2): ent("select"),
         opt(CONF_RELAX): ent("switch"),
         opt(CONF_CHRONO): ent("switch"),
+        opt(CONF_IGNITIONS): ent("sensor"),
         opt(CONF_PRESENCE): ent(PRESENCE_DOMAINS),
         opt(CONF_MQTT_TOPIC): selector.TextSelector(),
         vol.Required(CONF_SCHEDULE_FORMAT, default=d.get(CONF_SCHEDULE_FORMAT, "v2")): selector.SelectSelector(
@@ -96,7 +98,7 @@ def clean(user_input: dict[str, Any]) -> dict[str, Any]:
     out = dict(user_input)
     if out.get(CONF_PELLET_ENTRY) == NONE:
         out[CONF_PELLET_ENTRY] = None
-    for k in (CONF_FAN2, CONF_RELAX, CONF_CHRONO, CONF_PRESENCE, CONF_MQTT_TOPIC):
+    for k in (CONF_FAN2, CONF_RELAX, CONF_CHRONO, CONF_IGNITIONS, CONF_PRESENCE, CONF_MQTT_TOPIC):
         out.setdefault(k, None)
         if out[k] == "":
             out[k] = None

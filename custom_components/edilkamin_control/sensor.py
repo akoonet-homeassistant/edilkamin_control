@@ -9,6 +9,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .const import F_NAME
 from .entity import EdilkaminEntity
@@ -19,6 +20,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddE
     ents: list[SensorEntity] = [
         CurrentProfile(ctl),
         NextChange(ctl),
+        IgnitionHistory(ctl),
         HoursSensor(ctl, "reservoir_hours", ctl.reservoir_hours, "mdi:timer-sand", True),
         HoursSensor(ctl, "reservoir_average", ctl.reservoir_average, "mdi:chart-bell-curve"),
         HoursSensor(ctl, "reservoir_autonomy", ctl.reservoir_autonomy, "mdi:gauge"),
@@ -51,6 +53,25 @@ class CurrentProfile(EdilkaminEntity, SensorEntity):
             "resync": st.get("resync"),
             "observe": self.ctl.observe,
         }
+
+
+class IgnitionHistory(EdilkaminEntity, SensorEntity):
+    """Dernier allumage ; l'attribut history liste les allumages des 3 derniers jours."""
+
+    _attr_icon = "mdi:fire-circle"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    def __init__(self, ctl) -> None:
+        super().__init__(ctl, "last_ignition")
+
+    @property
+    def native_value(self) -> datetime | None:
+        h = self.ctl.ignition_history()
+        return dt_util.parse_datetime(h[0]["start"]) if h else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"history": self.ctl.ignition_history(), "counter": self.ctl.ignitions_entity}
 
 
 class NextChange(EdilkaminEntity, SensorEntity):

@@ -22,7 +22,8 @@
           "schedule_format": "Format du planning de secours",
           "pellet_entry": "Suivi Stock Pellet",
           "bags_per_fill": "Sacs versés par remplissage",
-          "observe": "Mode observation (calcule sans commander le poêle)"
+          "observe": "Mode observation (calcule sans commander le poêle)",
+          "ignitions": "Compteur d'allumages du poêle"
         },
         "data_description": {
           "presence": "Maison vide : alarme en mode absence ou vacances, personne absente, zone vide, interrupteur coupé. Sert au réglage « Si absent » de chaque programmation.",
@@ -51,7 +52,8 @@
           "schedule_format": "Format du planning de secours",
           "pellet_entry": "Suivi Stock Pellet",
           "bags_per_fill": "Sacs versés par remplissage",
-          "observe": "Mode observation (calcule sans commander le poêle)"
+          "observe": "Mode observation (calcule sans commander le poêle)",
+          "ignitions": "Compteur d'allumages du poêle"
         },
         "data_description": {
           "presence": "Maison vide : alarme en mode absence ou vacances, personne absente, zone vide, interrupteur coupé. Sert au réglage « Si absent » de chaque programmation.",
@@ -171,6 +173,9 @@
       },
       "stock_autonomy": {
         "name": "Autonomie du stock"
+      },
+      "last_ignition": {
+        "name": "Dernier allumage"
       }
     },
     "binary_sensor": {
