@@ -1,0 +1,321 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Edilkamin Control",
+        "description": "Pick the stove thermostat published by the ESP32 firmware (MQTT).",
+        "data": {
+          "climate": "Stove thermostat"
+        }
+      },
+      "entities": {
+        "title": "Stove entities",
+        "description": "Entities found on the device of {climate}. Check them, then choose the options.",
+        "data": {
+          "status": "Stove status",
+          "standby": "Standby",
+          "fan2": "Fan 2",
+          "relax": "Relax (silent)",
+          "chrono": "Stove chrono (turned off when the schedule is re-enabled)",
+          "presence": "Presence (alarm, person, zone…)",
+          "mqtt_topic": "Fallback schedule MQTT topic",
+          "schedule_format": "Fallback schedule format",
+          "pellet_entry": "Suivi Stock Pellet",
+          "bags_per_fill": "Bags poured per refill",
+          "observe": "Observe mode (computes without driving the stove)"
+        },
+        "data_description": {
+          "presence": "Empty house: alarm armed away or vacation, person away, empty zone, switch off. Used by each schedule's “If away” setting.",
+          "mqtt_topic": "Leave empty to send no schedule to the ESP32.",
+          "schedule_format": "v1 for the akoonet-13 firmware (5 slots, no days or silent mode).",
+          "observe": "To run the integration next to existing automations: commands are only written to the logbook."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This stove is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Edilkamin Control options",
+        "data": {
+          "status": "Stove status",
+          "standby": "Standby",
+          "fan2": "Fan 2",
+          "relax": "Relax (silent)",
+          "chrono": "Stove chrono (turned off when the schedule is re-enabled)",
+          "presence": "Presence (alarm, person, zone…)",
+          "mqtt_topic": "Fallback schedule MQTT topic",
+          "schedule_format": "Fallback schedule format",
+          "pellet_entry": "Suivi Stock Pellet",
+          "bags_per_fill": "Bags poured per refill",
+          "observe": "Observe mode (computes without driving the stove)"
+        },
+        "data_description": {
+          "presence": "Empty house: alarm armed away or vacation, person away, empty zone, switch off. Used by each schedule's “If away” setting.",
+          "mqtt_topic": "Leave empty to send no schedule to the ESP32.",
+          "schedule_format": "v1 for the akoonet-13 firmware (5 slots, no days or silent mode).",
+          "observe": "To run the integration next to existing automations: commands are only written to the logbook."
+        }
+      }
+    }
+  },
+  "selector": {
+    "schedule_format": {
+      "options": {
+        "v2": "v2 – up to 10 slots, days and silent mode",
+        "v1": "v1 – akoonet-13 (5 slots)"
+      }
+    },
+    "days": {
+      "options": {
+        "0": "Monday",
+        "1": "Tuesday",
+        "2": "Wednesday",
+        "3": "Thursday",
+        "4": "Friday",
+        "5": "Saturday",
+        "6": "Sunday"
+      }
+    },
+    "mode": {
+      "options": {
+        "run": "Run",
+        "standby": "Standby"
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "planning": {
+        "name": "Schedule"
+      },
+      "override": {
+        "name": "Setpoint override"
+      },
+      "manual_settings": {
+        "name": "Manual settings"
+      },
+      "relax_priority": {
+        "name": "Manual silent priority"
+      },
+      "profile_active": {
+        "name": "{profile} enabled"
+      },
+      "profile_relax": {
+        "name": "{profile} silent"
+      }
+    },
+    "select": {
+      "forced_profile": {
+        "name": "Forced schedule"
+      },
+      "profile_mode": {
+        "name": "{profile} mode",
+        "state": {
+          "run": "Run",
+          "standby": "Standby"
+        }
+      },
+      "profile_power": {
+        "name": "{profile} power"
+      },
+      "profile_fan1": {
+        "name": "{profile} fan 1"
+      },
+      "profile_fan2": {
+        "name": "{profile} fan 2"
+      },
+      "profile_absent": {
+        "name": "{profile} if away"
+      }
+    },
+    "text": {
+      "profile_name": {
+        "name": "{profile} name"
+      }
+    },
+    "time": {
+      "profile_start": {
+        "name": "{profile} start"
+      },
+      "profile_end": {
+        "name": "{profile} end"
+      }
+    },
+    "number": {
+      "profile_setpoint": {
+        "name": "{profile} setpoint"
+      },
+      "reservoir_alert": {
+        "name": "Hopper alert threshold"
+      }
+    },
+    "sensor": {
+      "current_profile": {
+        "name": "Current schedule"
+      },
+      "next_change": {
+        "name": "Next change"
+      },
+      "reservoir_hours": {
+        "name": "Burn time since refill"
+      },
+      "reservoir_average": {
+        "name": "Average hopper duration"
+      },
+      "reservoir_autonomy": {
+        "name": "Hopper autonomy"
+      },
+      "stock_autonomy": {
+        "name": "Stock autonomy"
+      }
+    },
+    "binary_sensor": {
+      "reservoir_low": {
+        "name": "Hopper almost empty"
+      }
+    },
+    "button": {
+      "reservoir_filled": {
+        "name": "Hopper refilled"
+      }
+    }
+  },
+  "exceptions": {
+    "no_entry": {
+      "message": "No Edilkamin Control entry is loaded."
+    },
+    "no_profile": {
+      "message": "Schedule {profile} does not exist."
+    }
+  },
+  "services": {
+    "add_profile": {
+      "name": "Add a schedule",
+      "description": "Creates a schedule (10 at most).",
+      "fields": {
+        "entry_id": {
+          "name": "Stove",
+          "description": "Edilkamin Control entry (optional when there is only one)."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Displayed name."
+        },
+        "start": {
+          "name": "Start",
+          "description": "Start time."
+        },
+        "end": {
+          "name": "End",
+          "description": "End time (same as start: all day)."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Days of the week (0 = Monday)."
+        },
+        "setpoint": {
+          "name": "Setpoint",
+          "description": "Target temperature."
+        },
+        "mode": {
+          "name": "Mode",
+          "description": "Run or Standby."
+        },
+        "power": {
+          "name": "Power",
+          "description": "Auto or Man. P1 to P5."
+        },
+        "fan1": {
+          "name": "Fan 1",
+          "description": "Stove fan 1 value."
+        },
+        "fan2": {
+          "name": "Fan 2",
+          "description": "Stove fan 2 value."
+        },
+        "relax": {
+          "name": "Silent",
+          "description": "Relax mode."
+        },
+        "active": {
+          "name": "Enabled",
+          "description": "Schedule enabled."
+        }
+      }
+    },
+    "remove_profile": {
+      "name": "Remove a schedule",
+      "description": "Removes a schedule and its entities.",
+      "fields": {
+        "entry_id": {
+          "name": "Stove",
+          "description": "Edilkamin Control entry."
+        },
+        "profile": {
+          "name": "Schedule",
+          "description": "Position in the list (1 = first)."
+        }
+      }
+    },
+    "set_profile_days": {
+      "name": "Schedule days",
+      "description": "Sets the days of the week of a schedule.",
+      "fields": {
+        "entry_id": {
+          "name": "Stove",
+          "description": "Edilkamin Control entry."
+        },
+        "profile": {
+          "name": "Schedule",
+          "description": "Position in the list."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Days of the week (0 = Monday)."
+        }
+      }
+    },
+    "move_profile": {
+      "name": "Move a schedule",
+      "description": "Changes the position of a schedule (the first wins when they overlap).",
+      "fields": {
+        "entry_id": {
+          "name": "Stove",
+          "description": "Edilkamin Control entry."
+        },
+        "profile": {
+          "name": "Schedule",
+          "description": "Current position."
+        },
+        "position": {
+          "name": "New position",
+          "description": "Wanted position."
+        }
+      }
+    },
+    "reservoir_filled": {
+      "name": "Hopper refilled",
+      "description": "Resets the hopper burn-time counter.",
+      "fields": {
+        "entry_id": {
+          "name": "Stove",
+          "description": "Edilkamin Control entry."
+        }
+      }
+    },
+    "publish_schedule": {
+      "name": "Send the fallback schedule",
+      "description": "Publishes the fallback schedule to the ESP32 now.",
+      "fields": {
+        "entry_id": {
+          "name": "Stove",
+          "description": "Edilkamin Control entry."
+        }
+      }
+    }
+  }
+}

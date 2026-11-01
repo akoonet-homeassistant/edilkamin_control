@@ -1,0 +1,14 @@
+{
+  "domain": "edilkamin_control",
+  "name": "Edilkamin Control",
+  "after_dependencies": ["mqtt", "logbook", "suivi_stock_pellet"],
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": ["frontend", "http"],
+  "documentation": "https://github.com/akoonet-homeassistant/edilkamin-control",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/akoonet-homeassistant/edilkamin-control/issues",
+  "requirements": [],
+  "version": "2026.11.1"
+}

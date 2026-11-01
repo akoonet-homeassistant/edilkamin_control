@@ -1,0 +1,294 @@
+# Edilkamin Control
+
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
+![Version](https://img.shields.io/github/v/release/akoonet-homeassistant/edilkamin-control)
+
+🇫🇷 [Français](#français) · 🇬🇧 [English](#english)
+
+---
+
+## Français
+
+Programmation et pilotage d'un poêle à granulés **Edilkamin** dans Home Assistant, pour un poêle commandé par un **ESP32 en Bluetooth / MQTT** (firmware dérivé de [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT)).
+
+L'intégration remplace une série d'automatisations : elle applique des programmations horaires (consigne, Marche / Stand-by, puissance, ventilations, silence), respecte les réglages faits à la main, vérifie que le poêle a bien pris les ordres, et envoie un **planning de secours** à l'ESP32 pour que le poêle continue de suivre ses horaires si Home Assistant s'arrête.
+
+Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publiées par le firmware.
+
+![Carte](docs/screenshots/carte.png)
+
+### Fonctions
+
+- **Programmations** (10 au maximum) : nom, début, fin (début = fin : toute la journée, plage pouvant passer minuit), jours de la semaine, consigne, mode Marche ou Stand-by, puissance (Auto ou P1 à P5), ventilation 1, ventilation 2, silence (Relax). En cas de chevauchement, la programmation la plus haute dans la liste l'emporte.
+- **Allumage et extinction** : passage hors programmation → programmation, réactivation de la programmation, forçage, et début ou fin de plage quand le poêle est éteint alors que la programmation est en Marche, ou en Stand-by avec une température sous la consigne. Hors programmation, le poêle est éteint (une seule fois, au changement).
+- **Dérogation de consigne** : une consigne changée à la main est gardée jusqu'à une consigne de programmation plus basse, un passage hors programmation ou une modification de la consigne en cours.
+- **Réglages manuels** : ventilations, puissance, stand-by ou marche/arrêt changés à la main ne sont plus renvoyés jusqu'au prochain début ou fin de plage. Bouton « Rendre la main ».
+- **Silence manuel** : Relax activé à la main est prioritaire jusqu'à minuit.
+- **Programmation forcée** : une programmation appliquée tout de suite, jusqu'au prochain début ou fin de plage.
+- **Si absent** : avec une entité de présence (alarme, personne, zone, interrupteur…), chaque programmation peut être remplacée par une autre quand la maison est vide.
+- **Vérification** : 4 minutes après un changement de plage, ce que le poêle renvoie est comparé à la programmation et les ordres perdus sont renvoyés une fois (inscrit dans le journal).
+- **Retour de l'ESP32** : si un changement a eu lieu pendant une coupure, tout est renvoyé 1 minute après son retour.
+- **Planning de secours** : publié en MQTT (message retenu) à chaque modification.
+- **Réservoir de granulés** : heures de chauffe depuis le remplissage, durée moyenne d'un réservoir, autonomie estimée, seuil d'alerte.
+- **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (facultatif, s'il est installé) : le bouton « Réservoir rempli » enregistre la consommation dans Suivi Stock Pellet, une consommation saisie dans Suivi Stock Pellet remet le compteur du réservoir à zéro, et l'autonomie du stock est calculée.
+- **Mode observation** : l'intégration calcule tout mais n'envoie rien au poêle ; les ordres sont inscrits dans le journal. Pratique pour la faire tourner à côté d'automatisations existantes avant de basculer.
+- **Carte Lovelace** fournie et chargée automatiquement.
+
+### Prérequis
+
+- Home Assistant 2024.11 ou plus récent.
+- Un poêle Edilkamin piloté par l'ESP32 (firmware Edilkamin_BT ou dérivé) : un thermostat (`climate`), un capteur de statut et un interrupteur Stand-by publiés en MQTT. Ventilation 2, Relax et Chrono sont facultatifs.
+- MQTT, seulement pour le planning de secours.
+
+### Installation
+
+1. HACS → Intégrations → menu ⋮ → **Dépôts personnalisés** → `https://github.com/akoonet-homeassistant/edilkamin-control`, catégorie **Intégration**.
+2. Installer **Edilkamin Control**, puis redémarrer Home Assistant.
+3. Paramètres → Appareils et services → **Ajouter une intégration** → Edilkamin Control.
+
+### Configuration
+
+| | |
+|---|---|
+| ![Étape 1](docs/screenshots/configuration_1.png) | ![Étape 2](docs/screenshots/configuration_2.png) |
+
+1. Choisir le thermostat du poêle.
+2. Vérifier les entités trouvées sur le même appareil et choisir les options :
+   - **Présence** : maison vide si l'alarme est en mode absence ou vacances, la personne absente, la zone vide ou l'interrupteur coupé.
+   - **Sujet MQTT du planning de secours** : proposé d'après l'identifiant de l'ESP32 (`edilkamin/<id>/schedule`). Vide = pas d'envoi.
+   - **Format du planning de secours** : `v2` (jusqu'à 10 plages, jours et silence) ou `v1` pour le firmware akoonet-13 (5 plages).
+   - **Suivi Stock Pellet** et **sacs versés par remplissage** (affichés seulement si Suivi Stock Pellet est installé).
+   - **Mode observation**.
+
+Toutes les options se modifient ensuite par **Configurer**.
+
+### Carte
+
+La carte est chargée par l'intégration, rien à ajouter dans les ressources.
+
+```yaml
+type: custom:edilkamin-control-card
+climate: climate.poele
+```
+
+| Thème clair | Thème sombre |
+|---|---|
+| ![Carte](docs/screenshots/carte.png) | ![Carte sombre](docs/screenshots/carte_sombre.png) |
+
+- Les étiquettes d'une programmation (Puissance, V1, V2, Stand-by, Silence) changent la valeur à chaque appui.
+- **Gérer les programmations** ouvre le menu : liste, modification, création et suppression.
+
+| Programmations | Modification | Nouvelle |
+|---|---|---|
+| ![Liste](docs/screenshots/menu_liste.png) | ![Modification](docs/screenshots/menu_edition.png) | ![Nouvelle](docs/screenshots/menu_nouvelle.png) |
+
+Options de la carte :
+
+| Option | Défaut | Rôle |
+|---|---|---|
+| `climate` | obligatoire | Thermostat du poêle |
+| `mode` | `full` | `planning` : affiche seulement le menu des programmations (pour une vue dédiée) |
+| `title` | Poêle | Titre |
+| `show_header`, `show_modes`, `show_planning`, `show_tracking`, `show_graph` | `true` | Sections affichées |
+| `status`, `fan2`, `relax`, `standby`, `real_power`, `real_fan1`, `real_fan2`, `pellet`, `ignitions`, `alarm`, `alarm_label` | détection | Entités du firmware, si la détection automatique ne les trouve pas |
+
+### Entités
+
+Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
+
+**Générales**
+
+| Entité | Rôle |
+|---|---|
+| `switch.poele_programmation` | Programmation activée |
+| `select.poele_programmation_forcee` | Automatique, ou programmation forcée jusqu'au prochain changement de plage |
+| `sensor.poele_programmation_en_cours` | Programmation appliquée (attributs `profile`, `substitution`, `occupied`, `resync`, `observe`) |
+| `sensor.poele_prochain_changement` | Prochain début ou fin de plage |
+| `switch.poele_derogation_de_consigne` | Dérogation de consigne (attribut `reference`) |
+| `switch.poele_reglages_manuels` | Réglages manuels ; le couper = « Rendre la main » |
+| `switch.poele_priorite_silence_manuel` | Silence activé à la main, prioritaire jusqu'à minuit |
+| `sensor.poele_chauffe_depuis_le_remplissage` | Heures de chauffe depuis le dernier remplissage |
+| `sensor.poele_duree_moyenne_d_un_reservoir` | Moyenne des 10 derniers réservoirs (attribut `durations`) |
+| `sensor.poele_autonomie_du_reservoir` | Heures de chauffe restantes estimées (à partir de 2 réservoirs mesurés) |
+| `sensor.poele_autonomie_du_stock` | Heures de chauffe permises par le stock (Suivi Stock Pellet) |
+| `number.poele_seuil_d_alerte_du_reservoir` | Seuil en heures (0 = désactivé) |
+| `binary_sensor.poele_reservoir_bientot_vide` | Seuil dépassé |
+| `button.poele_reservoir_rempli` | Remet le compteur du réservoir à zéro |
+
+**Par programmation** (exemple « Soirée », attribut `profile` = position dans la liste)
+
+| Entité | Rôle |
+|---|---|
+| `switch.poele_soiree_active` | Programmation activée (attribut `days`, 0 = lundi) |
+| `text.poele_soiree_nom` | Nom |
+| `time.poele_soiree_debut`, `time.poele_soiree_fin` | Début et fin |
+| `number.poele_soiree_consigne` | Consigne |
+| `select.poele_soiree_mode` | Marche ou Stand-by |
+| `select.poele_soiree_puissance` | Auto ou Man. P1 à P5 |
+| `select.poele_soiree_ventilation_1`, `select.poele_soiree_ventilation_2` | Ventilations |
+| `switch.poele_soiree_silence` | Relax |
+| `select.poele_soiree_si_absent` | Programmation appliquée quand la maison est vide (si une présence est configurée) |
+
+### Services
+
+| Service | Rôle |
+|---|---|
+| `edilkamin_control.add_profile` | Crée une programmation (`name`, `start`, `end`, `days`, `setpoint`, `mode`, `power`, `fan1`, `fan2`, `relax`, `active`) |
+| `edilkamin_control.remove_profile` | Supprime la programmation `profile` (position) |
+| `edilkamin_control.set_profile_days` | Jours d'une programmation (`days`, 0 = lundi) |
+| `edilkamin_control.move_profile` | Change la position d'une programmation (priorité) |
+| `edilkamin_control.reservoir_filled` | Remet le compteur du réservoir à zéro |
+| `edilkamin_control.publish_schedule` | Envoie tout de suite le planning de secours |
+
+### Planning de secours (MQTT)
+
+Message retenu, QoS 1 : `{"v":2,"p":[{"a":1,"d":390,"f":510,"c":205,"m":0,"pu":0,"v1":6,"v2":6,"r":0,"j":31}, …]}`
+
+`a` active · `d`/`f` minutes depuis minuit · `c` consigne × 10 · `m` 1 = Stand-by · `pu` 0 = Auto, 1 à 5 · `v1` 1 à 5, 6 = Auto · `v2` 0 = arrêt, 1 à 5, 6 = Auto · `r` silence · `j` jours (bit 0 = lundi). Le format `v1` envoie exactement 5 plages sans `r` ni `j`.
+
+### Limites connues
+
+- Le format `v2` du planning de secours demande un firmware qui le lit ; avec akoonet-13, choisir `v1`.
+- Les programmations existantes faites avec des entrées (input_*) ne sont pas importées automatiquement : utiliser le service `add_profile`.
+
+---
+
+## English
+
+Scheduling and control of an **Edilkamin** pellet stove in Home Assistant, for a stove driven by an **ESP32 over Bluetooth / MQTT** (firmware derived from [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT)).
+
+The integration replaces a set of automations: it applies time schedules (setpoint, Run / Standby, power, fans, silent mode), respects settings changed by hand, checks that the stove actually took the commands, and sends a **fallback schedule** to the ESP32 so the stove keeps following its times if Home Assistant stops.
+
+It does not touch the stove itself: everything goes through the entities published by the firmware.
+
+![Card](docs/screenshots/carte.png)
+
+### Features
+
+- **Schedules** (up to 10): name, start, end (start = end: all day, slots may cross midnight), days of the week, setpoint, Run or Standby, power (Auto or P1 to P5), fan 1, fan 2, silent (Relax). When schedules overlap, the one highest in the list wins.
+- **Turning on and off**: leaving no schedule for a schedule, re-enabling scheduling, forcing, and a slot start or end while the stove is off and the schedule is in Run, or in Standby with the temperature below the setpoint. Outside any schedule the stove is turned off (once, on the change).
+- **Setpoint override**: a setpoint changed by hand is kept until a lower schedule setpoint, leaving the schedules, or a change of the current setpoint.
+- **Manual settings**: fans, power, standby or on/off changed by hand are no longer sent until the next slot start or end. “Give back” button.
+- **Manual silent mode**: Relax turned on by hand has priority until midnight.
+- **Forced schedule**: one schedule applied right away, until the next slot start or end.
+- **If away**: with a presence entity (alarm, person, zone, switch…), each schedule can be replaced by another one when the house is empty.
+- **Check**: 4 minutes after a slot change, what the stove reports is compared with the schedule and lost commands are sent once more (written to the logbook).
+- **ESP32 back online**: if something changed during an outage, everything is sent again 1 minute after it comes back.
+- **Fallback schedule**: published over MQTT (retained) on every change.
+- **Pellet hopper**: burn hours since refill, average hopper duration, estimated autonomy, alert threshold.
+- **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (optional, when installed): the “Hopper refilled” button logs the consumption in Suivi Stock Pellet, a consumption logged in Suivi Stock Pellet resets the hopper counter, and the stock autonomy is computed.
+- **Observe mode**: the integration computes everything but sends nothing to the stove; commands are written to the logbook. Handy to run it next to existing automations before switching over.
+- **Lovelace card** included and loaded automatically.
+
+### Requirements
+
+- Home Assistant 2024.11 or newer.
+- An Edilkamin stove driven by the ESP32 (Edilkamin_BT firmware or derived): a thermostat (`climate`), a status sensor and a Standby switch published over MQTT. Fan 2, Relax and Chrono are optional.
+- MQTT, only for the fallback schedule.
+
+### Installation
+
+1. HACS → Integrations → ⋮ menu → **Custom repositories** → `https://github.com/akoonet-homeassistant/edilkamin-control`, category **Integration**.
+2. Install **Edilkamin Control**, then restart Home Assistant.
+3. Settings → Devices & services → **Add integration** → Edilkamin Control.
+
+### Configuration
+
+| | |
+|---|---|
+| ![Step 1](docs/screenshots/configuration_1.png) | ![Step 2](docs/screenshots/configuration_2.png) |
+
+1. Pick the stove thermostat.
+2. Check the entities found on the same device and choose the options:
+   - **Presence**: empty house when the alarm is armed away or vacation, the person is away, the zone is empty or the switch is off.
+   - **Fallback schedule MQTT topic**: suggested from the ESP32 identifier (`edilkamin/<id>/schedule`). Empty = nothing sent.
+   - **Fallback schedule format**: `v2` (up to 10 slots, days and silent mode) or `v1` for the akoonet-13 firmware (5 slots).
+   - **Suivi Stock Pellet** and **bags poured per refill** (shown only when Suivi Stock Pellet is installed).
+   - **Observe mode**.
+
+All options can be changed later with **Configure**.
+
+### Card
+
+The card is loaded by the integration, nothing to add to the resources.
+
+```yaml
+type: custom:edilkamin-control-card
+climate: climate.stove
+```
+
+- The tags of a schedule (Power, V1, V2, Standby, Silent) change the value on each tap.
+- **Manage schedules** opens the menu: list, edit, create and delete.
+
+Card options:
+
+| Option | Default | Purpose |
+|---|---|---|
+| `climate` | required | Stove thermostat |
+| `mode` | `full` | `planning`: shows only the schedule menu (for a dedicated view) |
+| `title` | Stove | Title |
+| `show_header`, `show_modes`, `show_planning`, `show_tracking`, `show_graph` | `true` | Displayed sections |
+| `status`, `fan2`, `relax`, `standby`, `real_power`, `real_fan1`, `real_fan2`, `pellet`, `ignitions`, `alarm`, `alarm_label` | detection | Firmware entities, when automatic detection does not find them |
+
+### Entities
+
+The entity IDs depend on the entry name and on the Home Assistant language (shown here for an English installation and an entry named “Stove”).
+
+**General**
+
+| Entity | Purpose |
+|---|---|
+| `switch.stove_schedule` | Scheduling enabled |
+| `select.stove_forced_schedule` | Automatic, or a schedule forced until the next slot change |
+| `sensor.stove_current_schedule` | Applied schedule (attributes `profile`, `substitution`, `occupied`, `resync`, `observe`) |
+| `sensor.stove_next_change` | Next slot start or end |
+| `switch.stove_setpoint_override` | Setpoint override (attribute `reference`) |
+| `switch.stove_manual_settings` | Manual settings; turning it off = “Give back” |
+| `switch.stove_manual_silent_priority` | Silent mode turned on by hand, priority until midnight |
+| `sensor.stove_burn_time_since_refill` | Burn hours since the last refill |
+| `sensor.stove_average_hopper_duration` | Average of the last 10 hoppers (attribute `durations`) |
+| `sensor.stove_hopper_autonomy` | Estimated remaining burn hours (from 2 measured hoppers) |
+| `sensor.stove_stock_autonomy` | Burn hours allowed by the stock (Suivi Stock Pellet) |
+| `number.stove_hopper_alert_threshold` | Threshold in hours (0 = off) |
+| `binary_sensor.stove_hopper_almost_empty` | Threshold exceeded |
+| `button.stove_hopper_refilled` | Resets the hopper counter |
+
+**Per schedule** (example “Evening”, attribute `profile` = position in the list)
+
+| Entity | Purpose |
+|---|---|
+| `switch.stove_evening_enabled` | Schedule enabled (attribute `days`, 0 = Monday) |
+| `text.stove_evening_name` | Name |
+| `time.stove_evening_start`, `time.stove_evening_end` | Start and end |
+| `number.stove_evening_setpoint` | Setpoint |
+| `select.stove_evening_mode` | Run or Standby |
+| `select.stove_evening_power` | Auto or Man. P1 to P5 |
+| `select.stove_evening_fan_1`, `select.stove_evening_fan_2` | Fans |
+| `switch.stove_evening_silent` | Relax |
+| `select.stove_evening_if_away` | Schedule applied when the house is empty (when presence is configured) |
+
+### Services
+
+| Service | Purpose |
+|---|---|
+| `edilkamin_control.add_profile` | Creates a schedule (`name`, `start`, `end`, `days`, `setpoint`, `mode`, `power`, `fan1`, `fan2`, `relax`, `active`) |
+| `edilkamin_control.remove_profile` | Removes schedule `profile` (position) |
+| `edilkamin_control.set_profile_days` | Days of a schedule (`days`, 0 = Monday) |
+| `edilkamin_control.move_profile` | Changes the position of a schedule (priority) |
+| `edilkamin_control.reservoir_filled` | Resets the hopper counter |
+| `edilkamin_control.publish_schedule` | Sends the fallback schedule now |
+
+### Fallback schedule (MQTT)
+
+Retained message, QoS 1: `{"v":2,"p":[{"a":1,"d":390,"f":510,"c":205,"m":0,"pu":0,"v1":6,"v2":6,"r":0,"j":31}, …]}`
+
+`a` enabled · `d`/`f` minutes since midnight · `c` setpoint × 10 · `m` 1 = Standby · `pu` 0 = Auto, 1 to 5 · `v1` 1 to 5, 6 = Auto · `v2` 0 = off, 1 to 5, 6 = Auto · `r` silent · `j` days (bit 0 = Monday). The `v1` format sends exactly 5 slots without `r` or `j`.
+
+### Known limits
+
+- The `v2` fallback schedule format needs a firmware that reads it; with akoonet-13, choose `v1`.
+- Existing schedules built with helpers (input_*) are not imported automatically: use the `add_profile` service.
+
+---
+
+Firmware: fork of [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT). Not affiliated with Edilkamin. MIT licence.

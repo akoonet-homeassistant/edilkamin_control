@@ -1,0 +1,321 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Edilkamin Control",
+        "description": "Choisissez le thermostat du poêle publié par le firmware ESP32 (MQTT).",
+        "data": {
+          "climate": "Thermostat du poêle"
+        }
+      },
+      "entities": {
+        "title": "Entités du poêle",
+        "description": "Entités détectées sur l'appareil de {climate}. Vérifiez-les, puis choisissez les options.",
+        "data": {
+          "status": "Statut du poêle",
+          "standby": "Stand-by",
+          "fan2": "Ventilation 2",
+          "relax": "Relax (silence)",
+          "chrono": "Chrono du poêle (coupé à la réactivation de la programmation)",
+          "presence": "Présence (alarme, personne, zone…)",
+          "mqtt_topic": "Sujet MQTT du planning de secours",
+          "schedule_format": "Format du planning de secours",
+          "pellet_entry": "Suivi Stock Pellet",
+          "bags_per_fill": "Sacs versés par remplissage",
+          "observe": "Mode observation (calcule sans commander le poêle)"
+        },
+        "data_description": {
+          "presence": "Maison vide : alarme en mode absence ou vacances, personne absente, zone vide, interrupteur coupé. Sert au réglage « Si absent » de chaque programmation.",
+          "mqtt_topic": "Laisser vide pour ne pas envoyer de planning à l'ESP32.",
+          "schedule_format": "v1 pour le firmware akoonet-13 (5 plages, sans jours ni silence).",
+          "observe": "Pour faire tourner l'intégration à côté d'automatisations existantes : les ordres sont seulement inscrits dans le journal."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Ce poêle est déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Edilkamin Control",
+        "data": {
+          "status": "Statut du poêle",
+          "standby": "Stand-by",
+          "fan2": "Ventilation 2",
+          "relax": "Relax (silence)",
+          "chrono": "Chrono du poêle (coupé à la réactivation de la programmation)",
+          "presence": "Présence (alarme, personne, zone…)",
+          "mqtt_topic": "Sujet MQTT du planning de secours",
+          "schedule_format": "Format du planning de secours",
+          "pellet_entry": "Suivi Stock Pellet",
+          "bags_per_fill": "Sacs versés par remplissage",
+          "observe": "Mode observation (calcule sans commander le poêle)"
+        },
+        "data_description": {
+          "presence": "Maison vide : alarme en mode absence ou vacances, personne absente, zone vide, interrupteur coupé. Sert au réglage « Si absent » de chaque programmation.",
+          "mqtt_topic": "Laisser vide pour ne pas envoyer de planning à l'ESP32.",
+          "schedule_format": "v1 pour le firmware akoonet-13 (5 plages, sans jours ni silence).",
+          "observe": "Pour faire tourner l'intégration à côté d'automatisations existantes : les ordres sont seulement inscrits dans le journal."
+        }
+      }
+    }
+  },
+  "selector": {
+    "schedule_format": {
+      "options": {
+        "v2": "v2 – jusqu'à 10 plages, jours et silence",
+        "v1": "v1 – akoonet-13 (5 plages)"
+      }
+    },
+    "days": {
+      "options": {
+        "0": "Lundi",
+        "1": "Mardi",
+        "2": "Mercredi",
+        "3": "Jeudi",
+        "4": "Vendredi",
+        "5": "Samedi",
+        "6": "Dimanche"
+      }
+    },
+    "mode": {
+      "options": {
+        "run": "Marche",
+        "standby": "Stand-by"
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "planning": {
+        "name": "Programmation"
+      },
+      "override": {
+        "name": "Dérogation de consigne"
+      },
+      "manual_settings": {
+        "name": "Réglages manuels"
+      },
+      "relax_priority": {
+        "name": "Priorité Silence manuel"
+      },
+      "profile_active": {
+        "name": "{profile} active"
+      },
+      "profile_relax": {
+        "name": "{profile} silence"
+      }
+    },
+    "select": {
+      "forced_profile": {
+        "name": "Programmation forcée"
+      },
+      "profile_mode": {
+        "name": "{profile} mode",
+        "state": {
+          "run": "Marche",
+          "standby": "Stand-by"
+        }
+      },
+      "profile_power": {
+        "name": "{profile} puissance"
+      },
+      "profile_fan1": {
+        "name": "{profile} ventilation 1"
+      },
+      "profile_fan2": {
+        "name": "{profile} ventilation 2"
+      },
+      "profile_absent": {
+        "name": "{profile} si absent"
+      }
+    },
+    "text": {
+      "profile_name": {
+        "name": "{profile} nom"
+      }
+    },
+    "time": {
+      "profile_start": {
+        "name": "{profile} début"
+      },
+      "profile_end": {
+        "name": "{profile} fin"
+      }
+    },
+    "number": {
+      "profile_setpoint": {
+        "name": "{profile} consigne"
+      },
+      "reservoir_alert": {
+        "name": "Seuil d'alerte du réservoir"
+      }
+    },
+    "sensor": {
+      "current_profile": {
+        "name": "Programmation en cours"
+      },
+      "next_change": {
+        "name": "Prochain changement"
+      },
+      "reservoir_hours": {
+        "name": "Chauffe depuis le remplissage"
+      },
+      "reservoir_average": {
+        "name": "Durée moyenne d'un réservoir"
+      },
+      "reservoir_autonomy": {
+        "name": "Autonomie du réservoir"
+      },
+      "stock_autonomy": {
+        "name": "Autonomie du stock"
+      }
+    },
+    "binary_sensor": {
+      "reservoir_low": {
+        "name": "Réservoir bientôt vide"
+      }
+    },
+    "button": {
+      "reservoir_filled": {
+        "name": "Réservoir rempli"
+      }
+    }
+  },
+  "exceptions": {
+    "no_entry": {
+      "message": "Aucune entrée Edilkamin Control chargée."
+    },
+    "no_profile": {
+      "message": "La programmation {profile} n'existe pas."
+    }
+  },
+  "services": {
+    "add_profile": {
+      "name": "Ajouter une programmation",
+      "description": "Crée une programmation (10 au maximum).",
+      "fields": {
+        "entry_id": {
+          "name": "Poêle",
+          "description": "Entrée Edilkamin Control (facultatif s'il n'y en a qu'une)."
+        },
+        "name": {
+          "name": "Nom",
+          "description": "Nom affiché."
+        },
+        "start": {
+          "name": "Début",
+          "description": "Heure de début."
+        },
+        "end": {
+          "name": "Fin",
+          "description": "Heure de fin (égale au début : toute la journée)."
+        },
+        "days": {
+          "name": "Jours",
+          "description": "Jours de la semaine (0 = lundi)."
+        },
+        "setpoint": {
+          "name": "Consigne",
+          "description": "Température de consigne."
+        },
+        "mode": {
+          "name": "Mode",
+          "description": "Marche ou Stand-by."
+        },
+        "power": {
+          "name": "Puissance",
+          "description": "Auto ou Man. P1 à P5."
+        },
+        "fan1": {
+          "name": "Ventilation 1",
+          "description": "Valeur de la ventilation 1 du poêle."
+        },
+        "fan2": {
+          "name": "Ventilation 2",
+          "description": "Valeur de la ventilation 2 du poêle."
+        },
+        "relax": {
+          "name": "Silence",
+          "description": "Mode Relax."
+        },
+        "active": {
+          "name": "Active",
+          "description": "Programmation activée."
+        }
+      }
+    },
+    "remove_profile": {
+      "name": "Supprimer une programmation",
+      "description": "Supprime une programmation et ses entités.",
+      "fields": {
+        "entry_id": {
+          "name": "Poêle",
+          "description": "Entrée Edilkamin Control."
+        },
+        "profile": {
+          "name": "Programmation",
+          "description": "Position dans la liste (1 = première)."
+        }
+      }
+    },
+    "set_profile_days": {
+      "name": "Jours d'une programmation",
+      "description": "Définit les jours de la semaine d'une programmation.",
+      "fields": {
+        "entry_id": {
+          "name": "Poêle",
+          "description": "Entrée Edilkamin Control."
+        },
+        "profile": {
+          "name": "Programmation",
+          "description": "Position dans la liste."
+        },
+        "days": {
+          "name": "Jours",
+          "description": "Jours de la semaine (0 = lundi)."
+        }
+      }
+    },
+    "move_profile": {
+      "name": "Déplacer une programmation",
+      "description": "Change la position d'une programmation (la première l'emporte en cas de chevauchement).",
+      "fields": {
+        "entry_id": {
+          "name": "Poêle",
+          "description": "Entrée Edilkamin Control."
+        },
+        "profile": {
+          "name": "Programmation",
+          "description": "Position actuelle."
+        },
+        "position": {
+          "name": "Nouvelle position",
+          "description": "Position voulue."
+        }
+      }
+    },
+    "reservoir_filled": {
+      "name": "Réservoir rempli",
+      "description": "Remet à zéro le compteur de chauffe du réservoir.",
+      "fields": {
+        "entry_id": {
+          "name": "Poêle",
+          "description": "Entrée Edilkamin Control."
+        }
+      }
+    },
+    "publish_schedule": {
+      "name": "Envoyer le planning de secours",
+      "description": "Publie tout de suite le planning de secours vers l'ESP32.",
+      "fields": {
+        "entry_id": {
+          "name": "Poêle",
+          "description": "Entrée Edilkamin Control."
+        }
+      }
+    }
+  }
+}

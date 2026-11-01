@@ -1,0 +1,120 @@
+add_profile:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: edilkamin_control
+    name:
+      example: "Matin"
+      selector:
+        text:
+    start:
+      example: "06:30"
+      selector:
+        time:
+    end:
+      example: "08:30"
+      selector:
+        time:
+    days:
+      example: [0, 1, 2, 3, 4]
+      selector:
+        select:
+          multiple: true
+          translation_key: days
+          options: ["0", "1", "2", "3", "4", "5", "6"]
+    setpoint:
+      selector:
+        number:
+          min: 5
+          max: 30
+          step: 0.5
+          unit_of_measurement: "°C"
+    mode:
+      selector:
+        select:
+          translation_key: mode
+          options: ["run", "standby"]
+    power:
+      example: "Auto"
+      selector:
+        text:
+    fan1:
+      example: "Auto"
+      selector:
+        text:
+    fan2:
+      example: "Auto"
+      selector:
+        text:
+    relax:
+      selector:
+        boolean:
+    active:
+      selector:
+        boolean:
+remove_profile:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: edilkamin_control
+    profile:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 10
+          mode: box
+set_profile_days:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: edilkamin_control
+    profile:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 10
+          mode: box
+    days:
+      required: true
+      selector:
+        select:
+          multiple: true
+          translation_key: days
+          options: ["0", "1", "2", "3", "4", "5", "6"]
+move_profile:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: edilkamin_control
+    profile:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 10
+          mode: box
+    position:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 10
+          mode: box
+reservoir_filled:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: edilkamin_control
+publish_schedule:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: edilkamin_control
