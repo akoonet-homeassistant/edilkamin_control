@@ -85,6 +85,7 @@ from .const import (
     SIGNAL_UPDATE,
     STATUS_NOT_BURNING,
     STATUS_OFF,
+    STATUS_OK,
     STATUS_STOPPING,
     STATUS_UNAVAILABLE,
     VERIFY_DELAY,
@@ -152,6 +153,9 @@ class EdilkaminController:
         self._verify_unsub = None
         self._verify_kind: str | None = None
         self._esp_unsub = None
+        self._ignite_unsub = None
+        self._ignite_tries = 0
+        self.esp_back_at: datetime | None = None
         self._sched_unsub = None
         self._save_unsub = None
         self.last_apply: datetime | None = None
@@ -376,7 +380,7 @@ class EdilkaminController:
         for u in self._unsubs:
             u()
         self._unsubs.clear()
-        for name in ("_slot_unsub", "_verify_unsub", "_esp_unsub", "_sched_unsub"):
+        for name in ("_slot_unsub", "_verify_unsub", "_esp_unsub", "_sched_unsub", "_ignite_unsub"):
             u = getattr(self, name)
             if u:
                 u()
@@ -535,6 +539,7 @@ class EdilkaminController:
         elif on_c and (bascule or heat or planif):
             if bascule and not heat:
                 await self._svc("climate", "set_hvac_mode", {"entity_id": clim, "hvac_mode": "heat"})
+                self.schedule_ignite_check(reset=True)
             preset = cp[F_POWER] or "Auto"
             if not manuel and (full or self.climate_attr("preset_mode") != preset):
                 await self._svc("climate", "set_preset_mode", {"entity_id": clim, "preset_mode": preset})
@@ -592,6 +597,38 @@ class EdilkaminController:
 
     # ------------------------------------------------------------------ vérification
     @callback
+    def schedule_ignite_check(self, reset: bool = False) -> None:
+        """Allumage demandé : vérifier 4 min plus tard que le poêle démarre, sinon renvoyer l'ordre (2 fois au plus)."""
+        if reset:
+            self._ignite_tries = 0
+        if self._ignite_unsub:
+            self._ignite_unsub()
+        self._ignite_unsub = async_call_later(self.hass, VERIFY_DELAY, self._on_ignite_check)
+
+    async def _on_ignite_check(self, _now: datetime) -> None:
+        self._ignite_unsub = None
+        st = self.state
+        if not st["planning"] or st["manual"] or not self.esp_available():
+            return
+        async with self._lock:
+            cp = self.by_id(st["current"])
+            if cp is None or self.status() != STATUS_OFF:
+                return
+            cons = float(self.climate_attr("temperature") or cp[F_SETPOINT])
+            t_amb = self.climate_attr("current_temperature")
+            t_amb = float(t_amb) if t_amb is not None else 99.0
+            if cp[F_MODE] == MODE_STANDBY and t_amb >= cons:
+                return
+            if self._ignite_tries >= 2:
+                self._log(f"Allumage {cp[F_NAME]} : le poêle reste à l'arrêt après 3 ordres d'allumage "
+                          f"(ambiante {t_amb} °C, consigne {cons} °C).")
+                return
+            self._ignite_tries += 1
+            await self._svc("climate", "set_hvac_mode", {"entity_id": self.ent(CONF_CLIMATE), "hvac_mode": "heat"})
+            self._log(f"Allumage {cp[F_NAME]} : poêle toujours à l'arrêt 4 min après l'ordre "
+                      f"(ambiante {t_amb} °C, consigne {cons} °C), ordre renvoyé ({self._ignite_tries}/2).")
+        self.schedule_ignite_check()
+
     def schedule_verify(self, kind: str) -> None:
         if not self.state.get("planning"):
             return
@@ -625,9 +662,9 @@ class EdilkaminController:
             t_lue = float(self.climate_attr("temperature") or 0)
             sb = self._st(CONF_STANDBY)
             err_cons = abs(t_lue - cons) > 0.05
-            err_marche = not manuel and kind == K_SLOT and status == STATUS_OFF and (
+            err_marche = not manuel and kind == K_SLOT and status == STATUS_OFF and self._ignite_unsub is None and (
                 cp[F_MODE] != MODE_STANDBY or t_amb < cons)
-            err_preset = not manuel and self.climate_attr("preset_mode") != cp[F_POWER]
+            err_preset = not manuel and status == STATUS_OK and self.climate_attr("preset_mode") != cp[F_POWER]
             err_sb = not manuel and sb is not None and (sb.state == "on") != (cp[F_MODE] == MODE_STANDBY)
             if not (err_cons or err_preset or err_sb or err_marche):
                 return
@@ -640,6 +677,7 @@ class EdilkaminController:
                                 {"entity_id": self.ent(CONF_STANDBY)})
             if err_marche:
                 await self._svc("climate", "set_hvac_mode", {"entity_id": clim, "hvac_mode": "heat"})
+                self.schedule_ignite_check()
             parts = []
             if err_cons:
                 parts.append(f"consigne {cons} (lue {t_lue})")
@@ -659,6 +697,8 @@ class EdilkaminController:
         new: State | None = event.data.get("new_state")
         if new is None:
             return
+        if old is not None and old.state in STATUS_UNAVAILABLE and new.state not in STATUS_UNAVAILABLE:
+            self.esp_back_at = dt_util.utcnow()  # retour de l'ESP32 : valeurs relues, pas des réglages
         if eid == self.ent(CONF_STATUS) or (not self.ent(CONF_STATUS) and eid == self.ent(CONF_CLIMATE)):
             self._on_status(old, new)
         if self.ignitions_entity and eid == self.ignitions_entity:
@@ -846,6 +886,8 @@ class EdilkaminController:
                 and new.state not in STATUS_NOT_BURNING:
             self._record_start(now)  # pas de compteur : sortie de « Off »
         was = old.state if old else None
+        if new.state == STATUS_OK and was not in (STATUS_OK, *STATUS_UNAVAILABLE):
+            self.hass.async_create_task(self._power_on_run())
         if was in STATUS_UNAVAILABLE and new.state not in STATUS_UNAVAILABLE:
             if self._esp_unsub:
                 self._esp_unsub()
@@ -854,6 +896,19 @@ class EdilkaminController:
             self._esp_unsub()
             self._esp_unsub = None
         self.notify()
+
+    async def _power_on_run(self) -> None:
+        """Le poêle passe en marche : la puissance de la programmation (remise à Auto pendant l'allumage) est renvoyée."""
+        st = self.state
+        if not st["planning"] or st["manual"]:
+            return
+        cp = self.by_id(st["current"])
+        if cp is None or not cp.get(F_POWER) or self.climate_attr("preset_mode") == cp[F_POWER]:
+            return
+        async with self._lock:
+            self.last_apply = dt_util.utcnow()
+            await self._svc("climate", "set_preset_mode", {"entity_id": self.ent(CONF_CLIMATE), "preset_mode": cp[F_POWER]})
+        self._log(f"{cp[F_NAME]} : poêle en marche, puissance {cp[F_POWER]} renvoyée (remise à Auto pendant l'allumage).")
 
     async def _on_esp_back(self, _now: datetime) -> None:
         self._esp_unsub = None
@@ -910,6 +965,14 @@ class EdilkaminController:
         if before == after or str(before) in ESP_DEFAULT_VALUES or str(after) in ESP_DEFAULT_VALUES:
             return
         user = new.context is not None and new.context.user_id is not None
+        if not user:
+            # Valeurs relues au retour de l'ESP32 : pas un réglage fait à la main
+            if self.esp_back_at and not self._guard(self.esp_back_at, ESP_BACK_DELAY + 30):
+                return
+            # Puissance remise d'elle-même par le poêle hors de la phase de marche (arrêt, allumage,
+            # extinction) : la puissance manuelle ne s'applique qu'en marche
+            if what == "preset" and self.status() != STATUS_OK:
+                return
         if what == "marche":
             manual = user
         else:

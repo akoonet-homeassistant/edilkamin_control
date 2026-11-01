@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.6";
+const ECC_VERSION = "2026.11.7";
 
 const ECC_I18N = {
   fr: {
@@ -13,7 +13,7 @@ const ECC_I18N = {
     alarm: "Alarme", standby_wait: "En veille (Stand-by)", unknown: "Inconnu", unavailable: "Indisponible",
     lit: "Allumé", unlit: "Éteint", confirm_on: "Allumer ?", confirm_off: "Éteindre ?",
     power: "Puissance", power_auto: "Auto", in_progress: "en cours",
-    setpoint: "Consigne", room: "Ambiante", fans: "Ventilation & modes",
+    setpoint: "Consigne", room: "Ambiante", current_temp: "Température actuelle", hvac_heat: "Chauffage", hvac_off: "Éteint", fans: "Ventilation & modes",
     fan1: "Ventilation 1", fan2: "Ventilation 2", relax: "Relax (silence)", standby: "Stand-by",
     stopped: "arrêté", stop: "Arrêt",
     planning: "Programmation", planning_on: "Programmation activée", planning_off: "Programmation désactivée",
@@ -45,7 +45,7 @@ const ECC_I18N = {
     alarm: "Alarm", standby_wait: "Standby (waiting)", unknown: "Unknown", unavailable: "Unavailable",
     lit: "On", unlit: "Off", confirm_on: "Turn on?", confirm_off: "Turn off?",
     power: "Power", power_auto: "Auto", in_progress: "now",
-    setpoint: "Setpoint", room: "Room", fans: "Fans & modes",
+    setpoint: "Setpoint", room: "Room", current_temp: "Current temperature", hvac_heat: "Heat", hvac_off: "Off", fans: "Fans & modes",
     fan1: "Fan 1", fan2: "Fan 2", relax: "Relax (silent)", standby: "Standby",
     stopped: "stopped", stop: "Off",
     planning: "Schedule", planning_on: "Schedule enabled", planning_off: "Schedule disabled",
@@ -218,6 +218,7 @@ class EdilkaminControlCard extends HTMLElement {
     for (const k of Object.keys(r)) if (typeof r[k] === "string") ids.push(r[k]);
     for (const p of r.profiles || []) for (const k of Object.keys(p)) if (k !== "n") ids.push(p[k]);
     const now = new Date();
+    if (this._config?.temperature_entity) ids.push(this._config.temperature_entity);
     return ids.map((e) => this._hass.states[e]?.last_updated || "").join("|") + "|" + now.getHours() + now.getMinutes() + "|" + (this._confirm || "") + "|" + (this._page ?? "") + JSON.stringify(this._draft || "") + "|" + (this._hist ? this._histAt : 0);
   }
 
@@ -330,19 +331,11 @@ class EdilkaminControlCard extends HTMLElement {
     const conf = this._confirm === "power";
     return `
     <div class="head">
-      <div class="title">${this._config.title || this._t("title")}</div>
+      <div class="title">${this._config.title || this._t("title")}${this._thermometer()}</div>
       <div class="hdr-right">${profChip}</div>
       <div class="state" style="color:${stc}">${etat}</div>
       <div class="anim">${this._stove(ph, veille, low)}</div>
-      <div class="thermo">
-        <div class="room"><span class="big">${this._fmt(a.current_temperature)}</span><span class="unit">°C</span></div>
-        <div class="lbl">${this._t("room")}</div>
-        <div class="sp">
-          <button class="round" data-act="sp-" title="-"><ha-icon icon="mdi:minus"></ha-icon></button>
-          <div class="spv"><span>${this._fmt(a.temperature)}</span><small>${this._t("setpoint")}</small></div>
-          <button class="round" data-act="sp+" title="+"><ha-icon icon="mdi:plus"></ha-icon></button>
-        </div>
-      </div>
+      <div class="thermo">${this._dial(a, ph)}</div>
       <div class="infos">${puis}<br>${ventil}${low ? `<br><span class="red">⚠ ${this._t("pellets_low")}</span>` : ""}</div>
     </div>
     <div class="row2">
@@ -354,6 +347,61 @@ class EdilkaminControlCard extends HTMLElement {
         <ha-icon icon="mdi:tune-variant"></ha-icon><span>${this._t("power")} ${pr === "Auto" ? this._t("power_auto") : pr.slice(-1)}</span>
       </button>
     </div>`;
+  }
+
+  /* Thermomètre choisi dans l'éditeur, affiché sous le titre */
+  _thermometer() {
+    const id = this._config.temperature_entity;
+    if (!id) return "";
+    const st = this._hass.states[id];
+    const v = st && !["unknown", "unavailable"].includes(st.state) ? this._fmt(st.state) : "—";
+    const unit = st?.attributes?.unit_of_measurement || "°C";
+    const name = this._config.temperature_name ?? st?.attributes?.friendly_name ?? "";
+    return `<div class="tsub" data-act="more" data-entity="${id}" title="${name}"><ha-icon icon="mdi:thermometer"></ha-icon>${name ? `<small>${name} :</small>` : ""}<span>${v}${unit}</span></div>`;
+  }
+
+  /* Cadran du thermostat (comme la commande de thermostat de Home Assistant) */
+  _dial(a, ph) {
+    const min = Number(a.min_temp ?? 15), max = Number(a.max_temp ?? 30);
+    const step = Number(a.target_temp_step) || 0.5;
+    const target = Number(a.temperature), cur = Number(a.current_temperature);
+    const heat = this._v("climate") === "heat";
+    const burning = ["on", "ignition"].includes(ph);
+    const R = 80, C = 100, A0 = 135, SW = 270;
+    const ang = (t) => A0 + SW * Math.min(1, Math.max(0, (t - min) / (max - min || 1)));
+    const pt = (deg) => { const r = (deg * Math.PI) / 180; return [C + R * Math.cos(r), C + R * Math.sin(r)]; };
+    const arc = (d1, d2) => {
+      if (d2 - d1 < 0.5) return "";
+      const [x1, y1] = pt(d1), [x2, y2] = pt(d2);
+      return `M${x1.toFixed(2)} ${y1.toFixed(2)} A${R} ${R} 0 ${d2 - d1 > 180 ? 1 : 0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+    };
+    const hasT = Number.isFinite(target), hasC = Number.isFinite(cur);
+    const at = hasT ? ang(target) : A0;
+    const col = heat ? "var(--ecc-accent)" : "var(--disabled-text-color, #9e9e9e)";
+    let paths = `<path d="${arc(A0, A0 + SW)}" class="track"/>`;
+    if (hasT) paths += `<path d="${arc(A0, at)}" stroke="${col}" class="fill"/>`;
+    if (heat && burning && hasT && hasC && cur < target) paths += `<path d="${arc(ang(cur), at)}" stroke="${col}" class="act"/>`;
+    const [hx, hy] = pt(at);
+    const handle = hasT ? `<circle cx="${hx.toFixed(2)}" cy="${hy.toFixed(2)}" r="9" class="handle" style="stroke:${col}"/>` : "";
+    const curDot = hasC && heat ? (() => { const [cx, cy] = pt(ang(cur)); return `<circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="3" class="curdot"/>`; })() : "";
+    const dec = step < 1 ? 1 : 0;
+    const txt = hasT ? this._fmt(target, dec) : "—";
+    const sepAt = Math.max(txt.lastIndexOf(","), txt.lastIndexOf("."));
+    const ent = sepAt > 0 ? txt.slice(0, sepAt) : txt, frac = sepAt > 0 ? txt.slice(sepAt) : "";
+    const label = this._t(heat ? "hvac_heat" : "hvac_off");
+    return `
+      <div class="curt"><small>${this._t("current_temp")}</small><b>${hasC ? this._fmt(cur) : "—"} °C</b></div>
+      <div class="dial">
+        <svg viewBox="0 0 200 200">${paths}${curDot}${handle}</svg>
+        <div class="dc">
+          <div class="dlabel">${label}</div>
+          <div class="dval"><span class="dint">${ent}</span><span class="dside"><span>°C</span><span>${frac}</span></span></div>
+        </div>
+        <div class="dbtn">
+          <button class="round" data-act="sp-" title="-"><ha-icon icon="mdi:minus"></ha-icon></button>
+          <button class="round" data-act="sp+" title="+"><ha-icon icon="mdi:plus"></ha-icon></button>
+        </div>
+      </div>`;
   }
 
   _stove(ph, veille, low) {
@@ -1069,12 +1117,32 @@ ha-icon { --mdc-icon-size: 18px; display: inline-flex; }
 button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; }
 .sep { height: 1px; background: var(--divider-color, rgba(127,127,127,.2)); margin: 12px -14px; }
 .head { display: grid; grid-template-columns: 120px 1fr; grid-template-areas: "title right" "state state" "anim thermo" "anim infos"; column-gap: 12px; row-gap: 2px; }
-.title { grid-area: title; font-size: 16px; font-weight: 600; align-self: center; }
+.title { grid-area: title; font-size: 16px; font-weight: 600; align-self: center; min-width: 0; }
 .hdr-right { grid-area: right; justify-self: end; }
 .state { grid-area: state; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 .anim { grid-area: anim; }
-.thermo { grid-area: thermo; display: flex; flex-direction: column; align-items: center; padding-top: 6px; }
-.infos { grid-area: infos; text-align: center; font-size: 12px; line-height: 1.55; color: var(--secondary-text-color); margin-top: 6px; }
+.thermo { grid-area: thermo; display: flex; flex-direction: column; align-items: center; padding-top: 2px; }
+.tsub { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; color: var(--secondary-text-color); margin-top: 2px; cursor: pointer; min-width: 0; }
+.tsub ha-icon { --mdc-icon-size: 16px; } .tsub span { color: var(--primary-text-color); white-space: nowrap; }
+.tsub small { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.curt { display: flex; flex-direction: column; align-items: center; line-height: 1.25; margin-bottom: 2px; }
+.curt small { font-size: 12px; color: var(--secondary-text-color); } .curt b { font-size: 15px; font-weight: 600; }
+.dial { position: relative; width: 100%; max-width: 190px; aspect-ratio: 1; }
+.dial svg { width: 100%; height: 100%; display: block; }
+.dial path { fill: none; stroke-linecap: round; stroke-width: 14; }
+.dial .track { stroke: rgba(127,127,127,.18); }
+.dial .fill { opacity: .45; }
+.dial .handle { fill: #fff; stroke-width: 5; }
+.dial .curdot { fill: #fff; opacity: .85; }
+.dc { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 8%; pointer-events: none; }
+.dlabel { font-size: 13px; font-weight: 600; }
+.dval { display: flex; align-items: flex-start; line-height: 1; margin-top: 2px; }
+.dint { font-size: 44px; font-weight: 400; }
+.dside { display: flex; flex-direction: column; justify-content: space-between; height: 40px; margin-left: 2px; font-size: 16px; }
+.dside span:last-child { font-size: 20px; }
+.dbtn { position: absolute; left: 0; right: 0; bottom: 2%; display: flex; justify-content: center; gap: 18px; }
+.dbtn .round { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color, rgba(127,127,127,.35)); }
+.infos { grid-area: infos; text-align: center; font-size: 12px; line-height: 1.55; color: var(--secondary-text-color); margin-top: 2px; }
 .room { display: flex; align-items: flex-start; }
 .big { font-size: 40px; font-weight: 400; line-height: 1; }
 .unit { font-size: 16px; margin-left: 2px; opacity: .7; }
@@ -1226,10 +1294,10 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 const ECC_ED_I18N = {
   fr: { climate: "Thermostat du poêle", title: "Titre", image_mode: "Image du poêle", bild9: "Edilkamin Bild 9+", builtin: "Dessin simple", custom: "Image personnelle",
     image: "Adresse de l'image (ex. /local/poele/poele.svg)", win_x: "Vitre : gauche (%)", win_y: "Vitre : haut (%)", win_w: "Vitre : largeur (%)",
-    win_h: "Vitre : hauteur (%)", image_calibration: "Afficher le cadre de la vitre (réglage)", mode: "Affichage", full: "Carte complète", planning: "Menu des programmations seul" },
+    win_h: "Vitre : hauteur (%)", image_calibration: "Afficher le cadre de la vitre (réglage)", mode: "Affichage", full: "Carte complète", planning: "Menu des programmations seul", temperature_entity: "Thermomètre (affiché sous le titre)", temperature_name: "Nom du thermomètre (vide = nom de l'entité)" },
   en: { climate: "Stove thermostat", title: "Title", image_mode: "Stove picture", bild9: "Edilkamin Bild 9+", builtin: "Simple drawing", custom: "Own picture",
     image: "Picture URL (e.g. /local/stove/stove.svg)", win_x: "Glass: left (%)", win_y: "Glass: top (%)", win_w: "Glass: width (%)",
-    win_h: "Glass: height (%)", image_calibration: "Show the glass frame (calibration)", mode: "Display", full: "Full card", planning: "Schedule menu only" },
+    win_h: "Glass: height (%)", image_calibration: "Show the glass frame (calibration)", mode: "Display", full: "Full card", planning: "Schedule menu only", temperature_entity: "Thermometer (shown under the title)", temperature_name: "Thermometer name (empty = entity name)" },
 };
 
 class EdilkaminControlCardEditor extends HTMLElement {
@@ -1243,7 +1311,7 @@ class EdilkaminControlCardEditor extends HTMLElement {
     const im = c.image || "bild9";
     const kind = im === "default" ? "generic" : (ECC_IMAGES[im] || im === "generic") ? im : "custom";
     const custom = kind === "custom";
-    return { climate: c.climate, title: c.title, mode: c.mode || "full", image_mode: kind,
+    return { climate: c.climate, title: c.title, temperature_entity: c.temperature_entity, temperature_name: c.temperature_name, mode: c.mode || "full", image_mode: kind,
       image: custom ? c.image : "", win_x: w.x ?? 25, win_y: w.y ?? 25, win_w: w.width ?? 50, win_h: w.height ?? 40,
       image_calibration: !!c.image_calibration };
   }
@@ -1253,6 +1321,8 @@ class EdilkaminControlCardEditor extends HTMLElement {
     const s = [
       { name: "climate", required: true, selector: { entity: { domain: "climate" } } },
       { name: "title", selector: { text: {} } },
+      { name: "temperature_entity", selector: { entity: { filter: { domain: "sensor", device_class: "temperature" } } } },
+      ...(d.temperature_entity ? [{ name: "temperature_name", selector: { text: {} } }] : []),
       { name: "mode", selector: { select: { mode: "dropdown", options: [{ value: "full", label: this._t("full") }, { value: "planning", label: this._t("planning") }] } } },
       { name: "image_mode", selector: { select: { mode: "dropdown", options: [{ value: "bild9", label: this._t("bild9") }, { value: "generic", label: this._t("builtin") }, { value: "custom", label: this._t("custom") }] } } },
     ];
@@ -1280,7 +1350,7 @@ class EdilkaminControlCardEditor extends HTMLElement {
 
   _changed(v) {
     const c = { ...this._config, climate: v.climate };
-    for (const k of ["title", "mode"]) { if (v[k] && !(k === "mode" && v[k] === "full")) c[k] = v[k]; else delete c[k]; }
+    for (const k of ["title", "mode", "temperature_entity", "temperature_name"]) { if (v[k] && !(k === "mode" && v[k] === "full")) c[k] = v[k]; else delete c[k]; }
     if (v.image_mode === "custom") {
       c.image = v.image || "/local/poele.svg";
       c.image_window = { x: Number(v.win_x), y: Number(v.win_y), width: Number(v.win_w), height: Number(v.win_h) };

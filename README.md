@@ -24,11 +24,11 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 - **Programmations** (10 au maximum) : nom, début, fin (début = fin : toute la journée, plage pouvant passer minuit), jours de la semaine, consigne, mode Marche ou Stand-by, puissance (Auto ou P1 à P5), ventilation 1, ventilation 2, silence (Relax). En cas de chevauchement, la programmation la plus haute dans la liste l'emporte.
 - **Allumage et extinction** : passage hors programmation → programmation, réactivation de la programmation, forçage, et début ou fin de plage quand le poêle est éteint alors que la programmation est en Marche, ou en Stand-by avec une température sous la consigne. Hors programmation, le poêle est éteint (une seule fois, au changement).
 - **Dérogation de consigne** : une consigne changée à la main est gardée jusqu'au prochain changement de la programmation (début ou fin de plage, autre programmation appliquée, forçage, passage hors programmation) ou jusqu'à une modification de la consigne en cours.
-- **Réglages manuels** : ventilations, puissance, stand-by ou marche/arrêt changés à la main (carte, tableau de bord, application, assistant vocal ou télécommande) ne sont plus renvoyés jusqu'au prochain début ou fin de plage. Bouton « Rendre la main ».
+- **Réglages manuels** : ventilations, puissance, stand-by ou marche/arrêt changés à la main (carte, tableau de bord, application, assistant vocal ou télécommande) ne sont plus renvoyés jusqu'au prochain début ou fin de plage. Bouton « Rendre la main ». Une puissance que le poêle remet de lui-même à « Auto » hors de la phase de marche (arrêt, allumage, extinction), et les valeurs relues au retour de l'ESP32, ne comptent pas comme réglage manuel. La puissance de la programmation est renvoyée dès que le poêle passe en marche.
 - **Silence manuel** : Relax activé à la main est prioritaire jusqu'à minuit.
 - **Programmation forcée** : une programmation appliquée tout de suite, jusqu'au prochain début ou fin de plage.
 - **Si absent** : avec une entité de présence (alarme, personne, zone, interrupteur…), chaque programmation peut être remplacée par une autre quand la maison est vide.
-- **Vérification** : 4 minutes après un changement de plage, ce que le poêle renvoie est comparé à la programmation et les ordres perdus sont renvoyés une fois (inscrit dans le journal).
+- **Vérification** : 4 minutes après un changement de plage, ce que le poêle renvoie est comparé à la programmation et les ordres perdus sont renvoyés une fois (inscrit dans le journal). Après chaque ordre d'allumage de la programmation, si le poêle est toujours à l'arrêt 4 minutes plus tard (et sous la consigne en Stand-by), l'ordre est renvoyé, 2 fois au plus.
 - **Retour de l'ESP32** : si un changement a eu lieu pendant une coupure, tout est renvoyé 1 minute après son retour.
 - **Planning de secours** : publié en MQTT (message retenu) à chaque modification.
 - **Réservoir de granulés** : heures de chauffe depuis le remplissage, durée du dernier réservoir, durée moyenne, autonomie estimée, seuil d'alerte, réserve signalée par le poêle. Tout est regroupé dans le menu de la tuile Granulés de la carte. Un suivi déjà tenu par une automatisation est repris une fois au premier démarrage, s'il est trouvé : `sensor.…poele…heures_depuis_remplissage`, `input_text.…poele…durees_reservoirs`, `input_number.…poele…dernier_chargement` et `input_number.…poele…seuil_alerte_reservoir` (la reprise est notée dans le journal).
@@ -110,6 +110,8 @@ climate: climate.poele
 |---|---|
 | ![Carte](docs/screenshots/carte.png) | ![Carte sombre](docs/screenshots/carte_sombre.png) |
 
+- **Thermostat** : cadran comme la commande de thermostat de Home Assistant (température actuelle, arc jusqu'à la consigne, Chauffage / Éteint, boutons − / +).
+- **Thermomètre** : un capteur de température choisi dans l'éditeur s'affiche sous le titre (« Salon : 21,6°C ») ; un appui ouvre sa fiche.
 - **Image du poêle** : choisie dans l'éditeur visuel de la carte. Les flammes, les ventilateurs et l'écran s'animent selon l'état du poêle.
 
 | Edilkamin Bild 9+ (défaut) | Dessin simple | Image personnelle | Éditeur |
@@ -140,6 +142,8 @@ Options de la carte :
 | `climate` | obligatoire | Thermostat du poêle |
 | `mode` | `full` | `planning` : affiche seulement le menu des programmations (pour une vue dédiée) |
 | `title` | Poêle | Titre |
+| `temperature_entity` | — | Thermomètre affiché sous le titre (capteur de température) |
+| `temperature_name` | nom de l'entité | Nom affiché devant la température du thermomètre |
 | `image` | `bild9` | `bild9` (Edilkamin Bild 9+), `generic` (dessin simple) ou adresse d'une image (ex. `/local/poele.svg`) |
 | `image_window` | — | Vitre d'une image personnelle, en % d'un cadre 140 × 212 : `x`, `y`, `width`, `height` |
 | `image_calibration` | `false` | Affiche le cadre de la vitre pour la régler |
@@ -223,11 +227,11 @@ It does not touch the stove itself: everything goes through the entities publish
 - **Schedules** (up to 10): name, start, end (start = end: all day, slots may cross midnight), days of the week, setpoint, Run or Standby, power (Auto or P1 to P5), fan 1, fan 2, silent (Relax). When schedules overlap, the one highest in the list wins.
 - **Turning on and off**: leaving no schedule for a schedule, re-enabling scheduling, forcing, and a slot start or end while the stove is off and the schedule is in Run, or in Standby with the temperature below the setpoint. Outside any schedule the stove is turned off (once, on the change).
 - **Setpoint override**: a setpoint changed by hand is kept until the next schedule change (slot start or end, another schedule applied, forcing, leaving the schedules) or a change of the current setpoint.
-- **Manual settings**: fans, power, standby or on/off changed by hand (card, dashboard, app, voice assistant or remote) are no longer sent until the next slot start or end. “Give back” button.
+- **Manual settings**: fans, power, standby or on/off changed by hand (card, dashboard, app, voice assistant or remote) are no longer sent until the next slot start or end. “Give back” button. A power level the stove resets to “Auto” by itself outside the run phase (off, ignition, shutdown), and values read back when the ESP32 reconnects, are not counted as manual settings. The schedule's power is sent again as soon as the stove reaches the run phase.
 - **Manual silent mode**: Relax turned on by hand has priority until midnight.
 - **Forced schedule**: one schedule applied right away, until the next slot start or end.
 - **If away**: with a presence entity (alarm, person, zone, switch…), each schedule can be replaced by another one when the house is empty.
-- **Check**: 4 minutes after a slot change, what the stove reports is compared with the schedule and lost commands are sent once more (written to the logbook).
+- **Check**: 4 minutes after a slot change, what the stove reports is compared with the schedule and lost commands are sent once more (written to the logbook). After each ignition order from the schedule, if the stove is still off 4 minutes later (and below the setpoint in Standby), the order is sent again, at most twice.
 - **ESP32 back online**: if something changed during an outage, everything is sent again 1 minute after it comes back.
 - **Fallback schedule**: published over MQTT (retained) on every change.
 - **Pellet hopper**: burn hours since refill, last and average hopper duration, estimated autonomy, alert threshold, reserve reported by the stove. Everything is grouped in the menu of the card's Pellets tile. A hopper follow-up already kept by an automation is imported once at first start, when found: `sensor.…poele…heures_depuis_remplissage`, `input_text.…poele…durees_reservoirs`, `input_number.…poele…dernier_chargement` and `input_number.…poele…seuil_alerte_reservoir` (the import is written to the log).
@@ -301,6 +305,8 @@ type: custom:edilkamin-control-card
 climate: climate.stove
 ```
 
+- **Thermostat**: dial like Home Assistant's thermostat control (current temperature, arc up to the setpoint, Heat / Off, − / + buttons).
+- **Thermometer**: a temperature sensor chosen in the editor is shown under the title (“Living room: 21.6°C”); a tap opens its details.
 - **Stove picture**: chosen in the card's visual editor. Flames, fans and display follow the stove state.
 - The tags of a schedule (Power, V1, V2, Standby, Silent) change the value on each tap.
 - **Ordering**: in the schedule menu, the ▲ ▼ arrows change the order (the highest wins when schedules overlap).
@@ -316,6 +322,8 @@ Card options:
 | `climate` | required | Stove thermostat |
 | `mode` | `full` | `planning`: shows only the schedule menu (for a dedicated view) |
 | `title` | Stove | Title |
+| `temperature_entity` | — | Thermometer shown under the title (temperature sensor) |
+| `temperature_name` | entity name | Name shown before the thermometer's temperature |
 | `image` | `bild9` | `bild9` (Edilkamin Bild 9+), `generic` (simple drawing) or a picture URL (e.g. `/local/stove.svg`) |
 | `image_window` | — | Glass of your own picture, in % of a 140 × 212 frame: `x`, `y`, `width`, `height` |
 | `image_calibration` | `false` | Shows the glass frame to adjust it |
