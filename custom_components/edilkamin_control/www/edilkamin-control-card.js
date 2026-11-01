@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.3";
+const ECC_VERSION = "2026.11.4";
 
 const ECC_I18N = {
   fr: {
@@ -151,13 +151,23 @@ class EdilkaminControlCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     // Registre des entités modifié (programmation ajoutée ou supprimée) : nouvelle résolution
-    if (!this._resolved || (hass.entities && hass.entities !== this._ents)) { this._ents = hass.entities; this._resolve(); }
+    // … ou ordre des programmations modifié (même entités, attribut « profile » renuméroté)
+    const ord = this._orderSig(hass);
+    if (!this._resolved || (hass.entities && hass.entities !== this._ents) || ord !== this._ord) {
+      this._ents = hass.entities; this._ord = ord; this._resolve();
+    }
     const sig = this._signature();
     if (sig !== this._sig) {
       this._sig = sig;
       this._render();
     }
     if (this._config.show_tracking && this._config.show_graph) this._loadHistory();
+  }
+
+  _orderSig(hass) {
+    const reg = hass.entities || {};
+    return Object.keys(reg).filter((e) => reg[e].platform === "edilkamin_control" && reg[e].translation_key === "profile_active")
+      .map((e) => e + ":" + (hass.states[e]?.attributes?.profile ?? "")).sort().join("|");
   }
 
   /* ------------------------------------------------------------ entités */

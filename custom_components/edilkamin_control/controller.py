@@ -334,7 +334,16 @@ class EdilkaminController:
         if hass.state is CoreState.running:
             hass.async_create_task(_started())
         else:
-            self._unsubs.append(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _started))
+            # écoute unique : ne pas la retirer au déchargement si elle a déjà servi
+            fired = False
+
+            async def _once(event: Event) -> None:
+                nonlocal fired
+                fired = True
+                await _started(event)
+
+            unsub = hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _once)
+            self._unsubs.append(lambda: None if fired else unsub())
 
     async def async_stop(self) -> None:
         for u in self._unsubs:
