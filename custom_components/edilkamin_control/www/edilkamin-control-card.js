@@ -18,7 +18,7 @@ const ECC_I18N = {
     stopped: "arrêté", stop: "Arrêt",
     planning: "Programmation", planning_on: "Programmation activée", planning_off: "Programmation désactivée",
     no_profile: "Aucun profil", forced: "forcé", automatic: "Automatique",
-    override: "Consigne manuelle", override_txt: "maintenue jusqu’à une baisse du profil",
+    override: "Consigne manuelle", override_txt: "maintenue jusqu’au prochain changement de plage",
     manual: "Réglages manuels", manual_txt: "ventilations, puissance, stand-by gardés jusqu’à",
     next_slot: "la prochaine plage", give_back: "Rendre la main", cancel: "Annuler",
     profile: "Profil", mode_run: "Marche", mode_standby: "Stand-by", all_day: "toute la journée",
@@ -47,7 +47,7 @@ const ECC_I18N = {
     stopped: "stopped", stop: "Off",
     planning: "Schedule", planning_on: "Schedule enabled", planning_off: "Schedule disabled",
     no_profile: "No profile", forced: "forced", automatic: "Automatic",
-    override: "Manual setpoint", override_txt: "kept until the profile goes lower",
+    override: "Manual setpoint", override_txt: "kept until the next slot change",
     manual: "Manual settings", manual_txt: "fans, power, standby kept until",
     next_slot: "the next slot", give_back: "Give back", cancel: "Cancel",
     profile: "Profile", mode_run: "Run", mode_standby: "Standby", all_day: "all day",
@@ -517,9 +517,8 @@ class EdilkaminControlCard extends HTMLElement {
         <ha-icon icon="${planning.state === "on" ? "mdi:calendar-check" : "mdi:calendar-remove"}"></ha-icon>${this._t(planning.state === "on" ? "planning_on" : "planning_off")}</button>` : ""}</div>`);
     const ov = this._s("override");
     if (ov?.state === "on") {
-      const ref = ov.attributes?.reference;
       out.push(`<div class="banner"><ha-icon icon="mdi:hand-back-right"></ha-icon>
-        <div><b>${this._t("override")} ${this._fmt(this._s("climate")?.attributes?.temperature)} °C</b><br><span>${this._t("override_txt")}${ref ? " " + this._fmt(ref) + " °C" : ""}</span></div>
+        <div><b>${this._t("override")} ${this._fmt(this._s("climate")?.attributes?.temperature)} °C</b><br><span>${this._t("override_txt")}${this._nextSlot() ? " (" + this._nextSlot() + ")" : ""}</span></div>
         <button data-act="off" data-entity="${r.override}">${this._t("cancel")}</button></div>`);
     }
     const man = this._s("manual");
@@ -671,13 +670,13 @@ class EdilkaminControlCard extends HTMLElement {
     return p ? p.n : null;
   }
 
-  // Heure réglée par boutons − / + (15 min, appui long = défilement) ; un appui sur l'heure ouvre le sélecteur
+  // Heure réglée par boutons − / + (5 min, appui long = défilement) ; un appui sur l'heure ouvre le sélecteur
   _timeStepper(n, f, label, value) {
     const pend = this._pend && this._pend.n === n && this._pend.f === f ? this._pend.v : value;
     return `<div class="fld"><small>${label}</small><div class="tstep">
-      <button class="round sm" data-hold="-15" data-n="${n}" data-f2="${f}"><ha-icon icon="mdi:minus"></ha-icon></button>
+      <button class="round sm" data-hold="-5" data-n="${n}" data-f2="${f}"><ha-icon icon="mdi:minus"></ha-icon></button>
       <label class="tval"><span>${pend}</span><input type="time" data-f="${f}" data-n="${n}" value="${pend}"></label>
-      <button class="round sm" data-hold="15" data-n="${n}" data-f2="${f}"><ha-icon icon="mdi:plus"></ha-icon></button></div></div>`;
+      <button class="round sm" data-hold="5" data-n="${n}" data-f2="${f}"><ha-icon icon="mdi:plus"></ha-icon></button></div></div>`;
   }
 
   _holdStart(el) {
@@ -686,8 +685,9 @@ class EdilkaminControlCard extends HTMLElement {
     const step = () => {
       const cur = this._pend.v.split(":").map(Number);
       const m = cur[0] * 60 + cur[1];
-      // pas de 15 min, aligné sur le quart d'heure
-      const next = d > 0 ? Math.floor(m / 15) * 15 + 15 : Math.ceil(m / 15) * 15 - 15;
+      // pas de 5 min, aligné sur les 5 minutes
+      const k = Math.abs(d);
+      const next = d > 0 ? Math.floor(m / k) * k + k : Math.ceil(m / k) * k - k;
       const mm = ((next % 1440) + 1440) % 1440;
       this._pend.v = `${String(Math.floor(mm / 60)).padStart(2, "0")}:${String(mm % 60).padStart(2, "0")}`;
       this._sig = ""; this._render();

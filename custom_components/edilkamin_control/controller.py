@@ -420,6 +420,7 @@ class EdilkaminController:
         if kind == K_ESP_BACK and not st["resync"]:
             return  # aucun changement pendant la coupure de l'ESP32
 
+        slot_change = kind == K_SLOT
         # Changement de plage pendant un forçage : fin du forçage, reprise comme un forçage
         if kind == K_SLOT and st["forced"]:
             st["forced"] = None
@@ -463,7 +464,10 @@ class EdilkaminController:
             or (kind in (K_SLOT, K_MANUAL_END) and on_c and status == STATUS_OFF
                 and (mode_p != MODE_STANDBY or temp < cons))
         )
-        fin_derog = derog and (complet or forcer or not on_c or cons < ref
+        # Dérogation de consigne : gardée jusqu'au prochain changement de la programmation
+        # (début ou fin de plage, programmation appliquée qui change, forçage, réactivation,
+        # passage hors programmation ou consigne de la programmation en cours modifiée)
+        fin_derog = derog and (complet or forcer or not on_c or slot_change or c != prec
                                or (edit_cible and edit is not None and edit[1] == F_SETPOINT))
 
         # Programmation désactivée sans forçage : affichage du profil seulement

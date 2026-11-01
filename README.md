@@ -23,7 +23,7 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 
 - **Programmations** (10 au maximum) : nom, début, fin (début = fin : toute la journée, plage pouvant passer minuit), jours de la semaine, consigne, mode Marche ou Stand-by, puissance (Auto ou P1 à P5), ventilation 1, ventilation 2, silence (Relax). En cas de chevauchement, la programmation la plus haute dans la liste l'emporte.
 - **Allumage et extinction** : passage hors programmation → programmation, réactivation de la programmation, forçage, et début ou fin de plage quand le poêle est éteint alors que la programmation est en Marche, ou en Stand-by avec une température sous la consigne. Hors programmation, le poêle est éteint (une seule fois, au changement).
-- **Dérogation de consigne** : une consigne changée à la main est gardée jusqu'à une consigne de programmation plus basse, un passage hors programmation ou une modification de la consigne en cours.
+- **Dérogation de consigne** : une consigne changée à la main est gardée jusqu'au prochain changement de la programmation (début ou fin de plage, autre programmation appliquée, forçage, passage hors programmation) ou jusqu'à une modification de la consigne en cours.
 - **Réglages manuels** : ventilations, puissance, stand-by ou marche/arrêt changés à la main (carte, tableau de bord, application, assistant vocal ou télécommande) ne sont plus renvoyés jusqu'au prochain début ou fin de plage. Bouton « Rendre la main ».
 - **Silence manuel** : Relax activé à la main est prioritaire jusqu'à minuit.
 - **Programmation forcée** : une programmation appliquée tout de suite, jusqu'au prochain début ou fin de plage.
@@ -113,7 +113,7 @@ climate: climate.poele
 
 - Les étiquettes d'une programmation (Puissance, V1, V2, Stand-by, Silence) changent la valeur à chaque appui.
 - **Classement** : dans le menu des programmations, les flèches ▲ ▼ changent l'ordre (la plus haute l'emporte en cas de chevauchement).
-- **Heures** : début et fin se règlent avec − / + par pas de 15 minutes (appui long pour défiler) ; un appui sur l'heure ouvre le sélecteur.
+- **Heures** : début et fin se règlent avec − / + par pas de 5 minutes (appui long pour défiler) ; un appui sur l'heure ouvre le sélecteur.
 - **Tuile Granulés** : un appui ouvre le menu du réservoir, avec le bouton de remplissage (« J'ai versé 1 sac » avec Suivi Stock Pellet).
 
 | Classement | Heures | Granulés |
@@ -213,7 +213,7 @@ It does not touch the stove itself: everything goes through the entities publish
 
 - **Schedules** (up to 10): name, start, end (start = end: all day, slots may cross midnight), days of the week, setpoint, Run or Standby, power (Auto or P1 to P5), fan 1, fan 2, silent (Relax). When schedules overlap, the one highest in the list wins.
 - **Turning on and off**: leaving no schedule for a schedule, re-enabling scheduling, forcing, and a slot start or end while the stove is off and the schedule is in Run, or in Standby with the temperature below the setpoint. Outside any schedule the stove is turned off (once, on the change).
-- **Setpoint override**: a setpoint changed by hand is kept until a lower schedule setpoint, leaving the schedules, or a change of the current setpoint.
+- **Setpoint override**: a setpoint changed by hand is kept until the next schedule change (slot start or end, another schedule applied, forcing, leaving the schedules) or a change of the current setpoint.
 - **Manual settings**: fans, power, standby or on/off changed by hand (card, dashboard, app, voice assistant or remote) are no longer sent until the next slot start or end. “Give back” button.
 - **Manual silent mode**: Relax turned on by hand has priority until midnight.
 - **Forced schedule**: one schedule applied right away, until the next slot start or end.
@@ -292,7 +292,7 @@ climate: climate.stove
 - **Stove picture**: chosen in the card's visual editor. Flames, fans and display follow the stove state.
 - The tags of a schedule (Power, V1, V2, Standby, Silent) change the value on each tap.
 - **Ordering**: in the schedule menu, the ▲ ▼ arrows change the order (the highest wins when schedules overlap).
-- **Times**: start and end are set with − / + in 15-minute steps (hold to scroll); tapping the time opens the picker.
+- **Times**: start and end are set with − / + in 5-minute steps (hold to scroll); tapping the time opens the picker.
 - **Pellets tile**: a tap opens the hopper menu, with the refill button (“I poured 1 bag” with Suivi Stock Pellet).
 - **Manage schedules** opens the menu: list, edit, create and delete.
 
