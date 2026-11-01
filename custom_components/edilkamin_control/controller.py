@@ -16,7 +16,7 @@ from typing import Any
 import uuid
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
+from homeassistant.const import EVENT_CALL_SERVICE, EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import CoreState, Event, HomeAssistant, State, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -315,6 +315,8 @@ class EdilkaminController:
         watch = [e for e in (self.ent(CONF_CLIMATE), self.ent(CONF_FAN2), self.ent(CONF_STANDBY),
                              self.ent(CONF_RELAX), self.ent(CONF_STATUS)) if e]
         self._unsubs.append(async_track_state_change_event(hass, watch, self._on_stove_event))
+        # Ordres donnés par un utilisateur (carte, tableau de bord, application, assistant vocal)
+        self._unsubs.append(hass.bus.async_listen(EVENT_CALL_SERVICE, self._on_call_service))
         if self.ent(CONF_PRESENCE):
             self._update_occupied(hass.states.get(self.ent(CONF_PRESENCE)), initial=True)
             self._unsubs.append(async_track_state_change_event(hass, [self.ent(CONF_PRESENCE)], self._on_presence))
@@ -634,6 +636,66 @@ class EdilkaminController:
             self._detect_manual("standby", old.state, new.state, old, new)
         elif eid == self.ent(CONF_RELAX) and old is not None and old.state != new.state:
             self._on_relax(old.state, new.state)
+
+    @callback
+    def _on_call_service(self, event: Event) -> None:
+        """Réglage du poêle demandé par un utilisateur : prend la main sur la programmation.
+
+        L'état renvoyé ensuite par l'ESP32 arrive sans utilisateur (message MQTT) : c'est donc
+        l'appel de service lui-même, qui porte l'utilisateur, qui sert à reconnaître une action manuelle.
+        """
+        ctx = event.context
+        if ctx is None or ctx.user_id is None:
+            return
+        d = event.data
+        domain, service = d.get("domain"), d.get("service")
+        data = d.get("service_data") or {}
+        ids = data.get("entity_id") or []
+        if isinstance(ids, str):
+            ids = [i.strip() for i in ids.split(",")]
+        clim, f2, sb = self.ent(CONF_CLIMATE), self.ent(CONF_FAN2), self.ent(CONF_STANDBY)
+        if domain == "climate" and clim in ids:
+            if service == "set_temperature" and data.get("temperature") is not None:
+                self._manual_setpoint(float(data["temperature"]))
+            elif service == "set_fan_mode":
+                self._manual_request("fan1", data.get("fan_mode"))
+            elif service == "set_preset_mode":
+                self._manual_request("preset", data.get("preset_mode"))
+            elif service in ("set_hvac_mode", "turn_on", "turn_off", "toggle"):
+                self._manual_request("marche", data.get("hvac_mode", service))
+        elif domain == "select" and f2 and f2 in ids and service == "select_option":
+            self._manual_request("fan2", data.get("option"))
+        elif domain in ("switch", "homeassistant") and sb and sb in ids and service in ("turn_on", "turn_off", "toggle"):
+            cur = self._st(CONF_STANDBY)
+            want = "on" if service == "turn_on" else "off" if service == "turn_off" else (
+                "off" if cur is not None and cur.state == "on" else "on")
+            self._manual_request("standby", want)
+
+    def _manual_setpoint(self, t: float) -> None:
+        """Consigne demandée par un utilisateur, différente de la programmation en cours : dérogation."""
+        cp = self.by_id(self.state["current"])
+        if not self._active_control() or cp is None or abs(t - float(cp[F_SETPOINT])) <= 0.05:
+            return
+        if not self.state["override"]:
+            self.state["override_ref"] = float(cp[F_SETPOINT])
+        self.state["override"] = True
+        self.async_save()
+        self.notify()
+
+    def _manual_request(self, what: str, value: Any) -> None:
+        st = self.state
+        cp = self.by_id(st["current"])
+        if not self._active_control() or st["manual"] or cp is None or value is None:
+            return
+        if what != "marche" and value == self._expected(what, cp, value):
+            return
+        st["manual"] = True
+        names = {"fan1": "ventilation 1", "fan2": "ventilation 2", "preset": "puissance",
+                 "standby": "stand-by", "marche": "marche/arrêt"}
+        self._log(f"Réglage manuel ({names[what]} : {value}, depuis Home Assistant) : la programmation ne renverra "
+                  "plus ventilations, puissance, stand-by ni marche/arrêt jusqu'au prochain changement de plage.")
+        self.async_save()
+        self.notify()
 
     def _on_status(self, old: State | None, new: State) -> None:
         now = dt_util.utcnow()

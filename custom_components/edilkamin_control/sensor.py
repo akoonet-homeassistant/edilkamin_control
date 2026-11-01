@@ -83,6 +83,18 @@ class HoursSensor(EdilkaminEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        if self._attr_translation_key == "reservoir_average":
+        key = self._attr_translation_key
+        if key == "reservoir_average":
             return {"durations": self.ctl.reservoir.get("durations"), "last_load_kg": self.ctl.reservoir.get("last_load")}
+        if key == "reservoir_hours":
+            return {"bags_per_fill": self.ctl.cfg.get("bags_per_fill"), "pellet_tracking": bool(self.ctl.pellet_consumed)}
+        if key == "stock_autonomy" and self.ctl.pellet_stock:
+            s = self.hass.states.get(self.ctl.pellet_stock)
+            if s is not None:
+                kg = None
+                try:
+                    kg = float(s.state)
+                except (TypeError, ValueError):
+                    pass
+                return {"stock_bags": s.attributes.get("stock_sacs"), "stock_kg": kg, "stock_entity": self.ctl.pellet_stock}
         return None

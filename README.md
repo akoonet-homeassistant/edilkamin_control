@@ -1,3 +1,5 @@
+<img src="custom_components/edilkamin_control/brand/icon.png" alt="Edilkamin Control" width="96" align="right">
+
 # Edilkamin Control
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
@@ -22,14 +24,14 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 - **Programmations** (10 au maximum) : nom, début, fin (début = fin : toute la journée, plage pouvant passer minuit), jours de la semaine, consigne, mode Marche ou Stand-by, puissance (Auto ou P1 à P5), ventilation 1, ventilation 2, silence (Relax). En cas de chevauchement, la programmation la plus haute dans la liste l'emporte.
 - **Allumage et extinction** : passage hors programmation → programmation, réactivation de la programmation, forçage, et début ou fin de plage quand le poêle est éteint alors que la programmation est en Marche, ou en Stand-by avec une température sous la consigne. Hors programmation, le poêle est éteint (une seule fois, au changement).
 - **Dérogation de consigne** : une consigne changée à la main est gardée jusqu'à une consigne de programmation plus basse, un passage hors programmation ou une modification de la consigne en cours.
-- **Réglages manuels** : ventilations, puissance, stand-by ou marche/arrêt changés à la main ne sont plus renvoyés jusqu'au prochain début ou fin de plage. Bouton « Rendre la main ».
+- **Réglages manuels** : ventilations, puissance, stand-by ou marche/arrêt changés à la main (carte, tableau de bord, application, assistant vocal ou télécommande) ne sont plus renvoyés jusqu'au prochain début ou fin de plage. Bouton « Rendre la main ».
 - **Silence manuel** : Relax activé à la main est prioritaire jusqu'à minuit.
 - **Programmation forcée** : une programmation appliquée tout de suite, jusqu'au prochain début ou fin de plage.
 - **Si absent** : avec une entité de présence (alarme, personne, zone, interrupteur…), chaque programmation peut être remplacée par une autre quand la maison est vide.
 - **Vérification** : 4 minutes après un changement de plage, ce que le poêle renvoie est comparé à la programmation et les ordres perdus sont renvoyés une fois (inscrit dans le journal).
 - **Retour de l'ESP32** : si un changement a eu lieu pendant une coupure, tout est renvoyé 1 minute après son retour.
 - **Planning de secours** : publié en MQTT (message retenu) à chaque modification.
-- **Réservoir de granulés** : heures de chauffe depuis le remplissage, durée moyenne d'un réservoir, autonomie estimée, seuil d'alerte.
+- **Réservoir de granulés** : heures de chauffe depuis le remplissage, durée du dernier réservoir, durée moyenne, autonomie estimée, seuil d'alerte, réserve signalée par le poêle. Tout est regroupé dans le menu de la tuile Granulés de la carte.
 - **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (facultatif, s'il est installé) : le bouton « Réservoir rempli » enregistre la consommation dans Suivi Stock Pellet, une consommation saisie dans Suivi Stock Pellet remet le compteur du réservoir à zéro, et l'autonomie du stock est calculée.
 - **Mode observation** : l'intégration calcule tout mais n'envoie rien au poêle ; les ordres sont inscrits dans le journal. Pratique pour la faire tourner à côté d'automatisations existantes avant de basculer.
 - **Carte Lovelace** fournie et chargée automatiquement, avec éditeur visuel et choix de l'image du poêle (Edilkamin Bild 9+ par défaut, dessin simple ou image personnelle).
@@ -37,7 +39,7 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 
 ### Prérequis
 
-- Home Assistant 2024.11 ou plus récent.
+- Home Assistant 2024.11 ou plus récent (l'icône de l'intégration s'affiche à partir de 2026.3).
 - Un ESP32 **Wemos D1 Mini ESP32** près du poêle, avec le firmware Edilkamin Control (voir ci-dessous). Le firmware d'origine [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT) est aussi pris en charge (non testé), sans planning de secours ni ventilation 2.
 - Un serveur **MQTT** (par exemple l'app Mosquitto de Home Assistant) et l'intégration MQTT : l'ESP32 publie toutes les entités du poêle en MQTT (thermostat, statut, Stand-by ; ventilation 2, Relax et Chrono si disponibles).
 
@@ -92,7 +94,7 @@ Toutes les options se modifient ensuite par **Configurer**.
 
 ### Carte
 
-La carte est chargée par l'intégration, rien à ajouter dans les ressources.
+La carte est chargée par l'intégration, rien à ajouter dans les ressources. Pour l'ajouter : tableau de bord en modification → **+** → onglet **Par carte** → rechercher « Edilkamin ». Si elle n'apparaît pas après une mise à jour, vider le cache du navigateur (Ctrl + F5, ou dans l'application : Paramètres → Application compagnon → Débogage → Réinitialiser le cache du frontend).
 
 ```yaml
 type: custom:edilkamin-control-card
@@ -110,6 +112,13 @@ climate: climate.poele
 | ![Bild 9+](docs/screenshots/image_bild9.png) | ![Dessin simple](docs/screenshots/image_dessin_simple.png) | ![Image personnelle](docs/screenshots/image_personnelle.png) | ![Éditeur](docs/screenshots/editeur.png) |
 
 - Les étiquettes d'une programmation (Puissance, V1, V2, Stand-by, Silence) changent la valeur à chaque appui.
+- **Classement** : dans le menu des programmations, les flèches ▲ ▼ changent l'ordre (la plus haute l'emporte en cas de chevauchement).
+- **Heures** : début et fin se règlent avec − / + par pas de 15 minutes (appui long pour défiler) ; un appui sur l'heure ouvre le sélecteur.
+- **Tuile Granulés** : un appui ouvre le menu du réservoir, avec le bouton de remplissage (« J'ai versé 1 sac » avec Suivi Stock Pellet).
+
+| Classement | Heures | Granulés |
+|---|---|---|
+| ![Classement](docs/screenshots/menu_liste.png) | ![Heures](docs/screenshots/menu_edition.png) | ![Granulés](docs/screenshots/menu_granules.png) |
 - **Gérer les programmations** ouvre le menu : liste, modification, création et suppression.
 
 | Programmations | Modification | Nouvelle |
@@ -205,14 +214,14 @@ It does not touch the stove itself: everything goes through the entities publish
 - **Schedules** (up to 10): name, start, end (start = end: all day, slots may cross midnight), days of the week, setpoint, Run or Standby, power (Auto or P1 to P5), fan 1, fan 2, silent (Relax). When schedules overlap, the one highest in the list wins.
 - **Turning on and off**: leaving no schedule for a schedule, re-enabling scheduling, forcing, and a slot start or end while the stove is off and the schedule is in Run, or in Standby with the temperature below the setpoint. Outside any schedule the stove is turned off (once, on the change).
 - **Setpoint override**: a setpoint changed by hand is kept until a lower schedule setpoint, leaving the schedules, or a change of the current setpoint.
-- **Manual settings**: fans, power, standby or on/off changed by hand are no longer sent until the next slot start or end. “Give back” button.
+- **Manual settings**: fans, power, standby or on/off changed by hand (card, dashboard, app, voice assistant or remote) are no longer sent until the next slot start or end. “Give back” button.
 - **Manual silent mode**: Relax turned on by hand has priority until midnight.
 - **Forced schedule**: one schedule applied right away, until the next slot start or end.
 - **If away**: with a presence entity (alarm, person, zone, switch…), each schedule can be replaced by another one when the house is empty.
 - **Check**: 4 minutes after a slot change, what the stove reports is compared with the schedule and lost commands are sent once more (written to the logbook).
 - **ESP32 back online**: if something changed during an outage, everything is sent again 1 minute after it comes back.
 - **Fallback schedule**: published over MQTT (retained) on every change.
-- **Pellet hopper**: burn hours since refill, average hopper duration, estimated autonomy, alert threshold.
+- **Pellet hopper**: burn hours since refill, last and average hopper duration, estimated autonomy, alert threshold, reserve reported by the stove. Everything is grouped in the menu of the card's Pellets tile.
 - **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (optional, when installed): the “Hopper refilled” button logs the consumption in Suivi Stock Pellet, a consumption logged in Suivi Stock Pellet resets the hopper counter, and the stock autonomy is computed.
 - **Observe mode**: the integration computes everything but sends nothing to the stove; commands are written to the logbook. Handy to run it next to existing automations before switching over.
 - **Lovelace card** included and loaded automatically, with a visual editor and a choice of stove picture (Edilkamin Bild 9+ by default, simple drawing or your own picture).
@@ -220,7 +229,7 @@ It does not touch the stove itself: everything goes through the entities publish
 
 ### Requirements
 
-- Home Assistant 2024.11 or newer.
+- Home Assistant 2024.11 or newer (the integration icon shows from 2026.3).
 - A **Wemos D1 Mini ESP32** next to the stove, running the Edilkamin Control firmware (see below). The original [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT) firmware is also supported (untested), without fallback schedule or fan 2.
 - An **MQTT** broker (for example the Mosquitto app of Home Assistant) and the MQTT integration: the ESP32 publishes every stove entity over MQTT (thermostat, status, Standby; fan 2, Relax and Chrono when available).
 
@@ -273,7 +282,7 @@ All options can be changed later with **Configure**.
 
 ### Card
 
-The card is loaded by the integration, nothing to add to the resources.
+The card is loaded by the integration, nothing to add to the resources. To add it: dashboard in edit mode → **+** → **By card** tab → search “Edilkamin”. If it does not show up after an update, clear the browser cache (Ctrl + F5, or in the app: Settings → Companion app → Debugging → Reset frontend cache).
 
 ```yaml
 type: custom:edilkamin-control-card
@@ -282,6 +291,9 @@ climate: climate.stove
 
 - **Stove picture**: chosen in the card's visual editor. Flames, fans and display follow the stove state.
 - The tags of a schedule (Power, V1, V2, Standby, Silent) change the value on each tap.
+- **Ordering**: in the schedule menu, the ▲ ▼ arrows change the order (the highest wins when schedules overlap).
+- **Times**: start and end are set with − / + in 15-minute steps (hold to scroll); tapping the time opens the picker.
+- **Pellets tile**: a tap opens the hopper menu, with the refill button (“I poured 1 bag” with Suivi Stock Pellet).
 - **Manage schedules** opens the menu: list, edit, create and delete.
 
 Card options:

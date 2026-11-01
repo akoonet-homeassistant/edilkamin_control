@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.2";
+const ECC_VERSION = "2026.11.3";
 
 const ECC_I18N = {
   fr: {
@@ -29,7 +29,12 @@ const ECC_I18N = {
     add_profile: "Ajouter une programmation", del: "Supprimer", confirm_del: "Supprimer ?", close: "Fermer",
     name: "Nom", start: "Début", end: "Fin", fan1s: "Ventil. 1", fan2s: "Ventil. 2",
     manage: "Gérer les programmations", schedules: "Programmations", new_schedule: "Nouvelle programmation", create: "Créer",
-    new_name: "Nouvelle", if_away: "Si absent", priority: "En cas de chevauchement, la programmation la plus haute dans la liste l’emporte.", back: "Retour",
+    new_name: "Nouvelle", if_away: "Si absent", move_up: "Monter", move_down: "Descendre",
+    reservoir: "Réservoir de granulés", res_hours: "Chauffe depuis le remplissage", last_load: "Dernier chargement",
+    last_res: "Durée du dernier réservoir", avg_res: "Durée moyenne d’un réservoir", res_auto: "Autonomie estimée du réservoir",
+    alert_after: "Alerte après (0 = désactivée)", stove_reserve: "Réserve signalée par le poêle", stock_left: "Stock restant (Suivi Stock Pellet)",
+    stock_auto: "Autonomie du stock", filled: "Réservoir rempli", poured: "J’ai versé", bags: "sac(s)", confirm_fill: "Confirmer ?",
+    reserve_low: "Réserve", ok: "OK", pending2: "après 2 réservoirs", bag_unit: "sacs", bag_one: "sac", priority: "En cas de chevauchement, la programmation la plus haute dans la liste l’emporte.", back: "Retour",
   },
   en: {
     title: "Stove",
@@ -53,7 +58,12 @@ const ECC_I18N = {
     add_profile: "Add a schedule", del: "Delete", confirm_del: "Delete?", close: "Close",
     name: "Name", start: "Start", end: "End", fan1s: "Fan 1", fan2s: "Fan 2",
     manage: "Manage schedules", schedules: "Schedules", new_schedule: "New schedule", create: "Create",
-    new_name: "New", if_away: "If away", priority: "When schedules overlap, the one highest in the list wins.", back: "Back",
+    new_name: "New", if_away: "If away", move_up: "Move up", move_down: "Move down",
+    reservoir: "Pellet hopper", res_hours: "Burn time since refill", last_load: "Last load",
+    last_res: "Last hopper duration", avg_res: "Average hopper duration", res_auto: "Estimated hopper autonomy",
+    alert_after: "Alert after (0 = off)", stove_reserve: "Reserve reported by the stove", stock_left: "Stock left (Suivi Stock Pellet)",
+    stock_auto: "Stock autonomy", filled: "Hopper refilled", poured: "I poured", bags: "bag(s)", confirm_fill: "Confirm?",
+    reserve_low: "Reserve", ok: "OK", pending2: "after 2 hoppers", bag_unit: "bags", bag_one: "bag", priority: "When schedules overlap, the one highest in the list wins.", back: "Back",
   },
 };
 
@@ -85,6 +95,13 @@ const ECC_PLANNER_KEYS = {
   forced_profile: "forced_profile",   // select : Automatique / Profil 1..n
   override: "override",            // switch : dérogation de consigne (attribut reference)
   manual: "manual_settings",       // switch : réglages manuels (attribut until)
+  res_hours: "reservoir_hours",    // sensor : heures de chauffe depuis le remplissage
+  res_avg: "reservoir_average",    // sensor : durée moyenne d'un réservoir (attribut durations)
+  res_auto: "reservoir_autonomy",  // sensor : autonomie estimée du réservoir
+  stock_auto: "stock_autonomy",    // sensor : autonomie du stock (Suivi Stock Pellet)
+  res_alert: "reservoir_alert",    // number : seuil d'alerte (h)
+  res_filled: "reservoir_filled",  // button : réservoir rempli
+  res_low: "reservoir_low",        // binary_sensor : réservoir bientôt vide
 };
 const ECC_PROFILE_KEYS = ["profile_active", "profile_start", "profile_end", "profile_setpoint", "profile_mode", "profile_name",
   "profile_power", "profile_fan1", "profile_fan2", "profile_relax", "profile_absent"];
@@ -108,8 +125,14 @@ class EdilkaminControlCard extends HTMLElement {
   static getConfigElement() { return document.createElement("edilkamin-control-card-editor"); }
 
   static getStubConfig(hass) {
-    const c = Object.keys(hass.states).find((e) => e.startsWith("climate.") && e.includes("edilkamin"));
-    return { climate: c || "climate.edilkamin" };
+    // Thermostat proposé : celui dont l'appareil porte un capteur de statut du firmware, sinon un nom « edilkamin »
+    const reg = hass.entities || {};
+    const climates = Object.keys(hass.states).filter((e) => e.startsWith("climate."));
+    const withStatus = climates.find((c) => {
+      const dev = reg[c]?.device_id;
+      return dev && Object.keys(reg).some((e) => reg[e].device_id === dev && /^sensor\..*_(status|statut)$/.test(e));
+    });
+    return { climate: withStatus || climates.find((e) => e.includes("edilkamin")) || climates[0] || "climate.edilkamin" };
   }
 
   setConfig(config) {
@@ -243,6 +266,7 @@ class EdilkaminControlCard extends HTMLElement {
     this.shadowRoot.querySelectorAll("select[data-sel]").forEach((el) => el.addEventListener("change", () => this._onSelect(el)));
     this.shadowRoot.querySelectorAll("select[data-dd]").forEach((el) => el.addEventListener("change", () => this._onDD(el)));
     this.shadowRoot.querySelectorAll("input[data-in]").forEach((el) => el.addEventListener("change", () => this._onInput(el)));
+    this.shadowRoot.querySelectorAll("[data-hold]").forEach((el) => el.addEventListener("pointerdown", (ev) => { ev.preventDefault(); ev.stopPropagation(); this._holdStart(el); }));
     this.shadowRoot.querySelectorAll("[data-f]").forEach((el) => {
       if (el.tagName !== "INPUT" && el.tagName !== "SELECT") return;
       el.addEventListener("change", () => { if (el.value) this._setField(el.dataset.n === "new" ? "new" : Number(el.dataset.n), el.dataset.f, el.value); });
@@ -578,6 +602,7 @@ class EdilkaminControlCard extends HTMLElement {
 
   _manager(overlay) {
     const pg = this._page ?? "list";
+    if (pg === "pellet") return this._pelletSheet(overlay);
     const close = overlay ? `<button class="round" data-act="page" data-page="close"><ha-icon icon="mdi:close"></ha-icon></button>` : "";
     if (pg === "list") {
       const cur = this._v("current_profile");
@@ -587,7 +612,10 @@ class EdilkaminControlCard extends HTMLElement {
         return `<div class="mrow ${v.active ? "" : "dis"} ${isCur ? "cur" : ""}">
           <button class="sw ${v.active ? "on" : ""}" data-act="toggle" data-entity="${p.active}"><span></span></button>
           <div class="pn" data-act="page" data-page="${p.n}"><b>${v.name}</b><span>${v.start === v.end ? this._t("all_day") : v.start + " → " + v.end} · ${this._days(v.days)} · ${this._fmt(v.setpoint)} °C</span>${this._tags(v, p.n)}</div>
-          <ha-icon icon="mdi:chevron-right" class="chev" data-act="page" data-page="${p.n}"></ha-icon></div>`;
+          <div class="ord">
+            <button class="round xs" data-act="move" data-n="${p.n}" data-val="-1" title="${this._t("move_up")}" ${p.n === 1 ? "disabled" : ""}><ha-icon icon="mdi:chevron-up"></ha-icon></button>
+            <button class="round xs" data-act="move" data-n="${p.n}" data-val="1" title="${this._t("move_down")}" ${p.n === this._resolved.profiles.length ? "disabled" : ""}><ha-icon icon="mdi:chevron-down"></ha-icon></button>
+          </div></div>`;
       }).join("");
       return `<div class="mhead"><ha-icon icon="mdi:calendar-clock" class="hicon"></ha-icon><b>${this._t("schedules")}</b>${close}</div>
         <div class="mlist">${rows}</div>
@@ -610,8 +638,8 @@ class EdilkaminControlCard extends HTMLElement {
       <div class="pedit">
         <label class="fld"><small>${this._t("name")}</small><input data-f="name" data-n="${n}" value="${String(v.name).replace(/"/g, "&quot;")}"></label>
         <div class="frow">
-          <label class="fld grow"><small>${this._t("start")}</small><input type="time" data-f="start" data-n="${n}" value="${v.start}"></label>
-          <label class="fld grow"><small>${this._t("end")}</small><input type="time" data-f="end" data-n="${n}" value="${v.end}"></label>
+          ${this._timeStepper(n, "start", this._t("start"), v.start)}
+          ${this._timeStepper(n, "end", this._t("end"), v.end)}
           <div class="fld"><small>${this._t("setpoint")}</small><div class="pc">
             <button class="round sm" data-act="fsp" data-n="${n}" data-val="-"><ha-icon icon="mdi:minus"></ha-icon></button>
             <span>${this._fmt(v.setpoint)}°</span>
@@ -641,6 +669,41 @@ class EdilkaminControlCard extends HTMLElement {
     if (a) return a;
     const p = this._resolved.profiles.find((x) => this._hass.states[x.name]?.state === s?.state);
     return p ? p.n : null;
+  }
+
+  // Heure réglée par boutons − / + (15 min, appui long = défilement) ; un appui sur l'heure ouvre le sélecteur
+  _timeStepper(n, f, label, value) {
+    const pend = this._pend && this._pend.n === n && this._pend.f === f ? this._pend.v : value;
+    return `<div class="fld"><small>${label}</small><div class="tstep">
+      <button class="round sm" data-hold="-15" data-n="${n}" data-f2="${f}"><ha-icon icon="mdi:minus"></ha-icon></button>
+      <label class="tval"><span>${pend}</span><input type="time" data-f="${f}" data-n="${n}" value="${pend}"></label>
+      <button class="round sm" data-hold="15" data-n="${n}" data-f2="${f}"><ha-icon icon="mdi:plus"></ha-icon></button></div></div>`;
+  }
+
+  _holdStart(el) {
+    const n = el.dataset.n === "new" ? "new" : Number(el.dataset.n), f = el.dataset.f2, d = Number(el.dataset.hold);
+    const base = this._pend && this._pend.n === n && this._pend.f === f ? this._pend.v : this._vals(n)[f];
+    const step = () => {
+      const cur = this._pend.v.split(":").map(Number);
+      const m = cur[0] * 60 + cur[1];
+      // pas de 15 min, aligné sur le quart d'heure
+      const next = d > 0 ? Math.floor(m / 15) * 15 + 15 : Math.ceil(m / 15) * 15 - 15;
+      const mm = ((next % 1440) + 1440) % 1440;
+      this._pend.v = `${String(Math.floor(mm / 60)).padStart(2, "0")}:${String(mm % 60).padStart(2, "0")}`;
+      this._sig = ""; this._render();
+    };
+    this._pend = { n, f, v: base };
+    step();
+    clearTimeout(this._holdT); clearInterval(this._holdI);
+    this._holdT = setTimeout(() => { this._holdI = setInterval(step, 110); }, 450);
+    const end = () => {
+      clearTimeout(this._holdT); clearInterval(this._holdI);
+      window.removeEventListener("pointerup", end); window.removeEventListener("pointercancel", end);
+      const pv = this._pend; this._pend = null;
+      if (pv && pv.v !== this._vals(pv.n)[pv.f]) this._setField(pv.n, pv.f, pv.v);
+      else { this._sig = ""; this._render(); }
+    };
+    window.addEventListener("pointerup", end); window.addEventListener("pointercancel", end);
   }
 
   _tags(v, n) {
@@ -692,8 +755,54 @@ class EdilkaminControlCard extends HTMLElement {
     <div class="tiles">
       ${this._resolved.ignitions ? tile("mdi:fire-circle", this._t("ignitions"), ign ?? "—", "#f06b21", this._resolved.ignitions) : ""}
       ${this._resolved.alarm ? tile(al ? "mdi:alert" : "mdi:check-circle", this._t("alarm_now"), al ? (lab || this._t("alarm")) : this._t("none"), al ? "#e53935" : "#2ea55f", this._resolved.alarm_label || this._resolved.alarm) : ""}
-      ${this._resolved.pellet ? tile("mdi:grain", this._t("pellets"), low ? this._t("pellets_low") : this._t("pellets_ok"), low ? "#e53935" : "#2ea55f", this._resolved.pellet) : ""}
+      ${this._resolved.pellet || this._resolved.res_hours ? this._pelletTile(low) : ""}
     </div>`;
+  }
+
+  _pelletTile(low) {
+    const h = Number(this._v("res_hours"));
+    const warn = low || this._v("res_low") === "on";
+    const val = low ? this._t("reserve_low") : Number.isFinite(h) && this._resolved.res_hours ? `${Math.round(h)} h` : this._t("ok");
+    const col = warn ? "#e67e22" : "#2ea55f";
+    return `<div class="tile" data-act="page" data-page="pellet">
+      <ha-icon icon="${warn ? "mdi:alert-circle-outline" : "mdi:grain"}" style="color:${col}"></ha-icon><span class="tl">${this._t("pellets")}</span>
+      <span class="tv" style="${warn ? "color:#e67e22" : ""}">${val}</span></div>`;
+  }
+
+  /* Menu « Réservoir de granulés » : mêmes informations que le menu du poêle */
+  _pelletSheet(overlay) {
+    const r = this._resolved, st = (k) => (r[k] ? this._hass.states[r[k]] : undefined);
+    const hrs = (v) => (v === undefined || v === null || v === "" || isNaN(Number(v)) ? "—" : `${this._fmt(v, Number(v) >= 100 ? 0 : 1)} h`);
+    const avgS = st("res_avg"), durations = avgS?.attributes?.durations || [];
+    const load = avgS?.attributes?.last_load_kg;
+    const stockS = st("stock_auto");
+    const rows = [];
+    const row = (icon, label, value, extra = "") => rows.push(`<div class="prow"><ha-icon icon="${icon}"></ha-icon><span>${label}</span><b>${value}</b>${extra}</div>`);
+    if (r.res_hours) row("mdi:fire", this._t("res_hours"), hrs(st("res_hours")?.state));
+    if (load != null) row("mdi:sack", this._t("last_load"), `${this._fmt(load)} kg`);
+    if (r.res_avg) row("mdi:history", this._t("last_res"), durations.length ? hrs(durations[0]) : "—");
+    if (r.res_avg) row("mdi:chart-bell-curve-cumulative", this._t("avg_res"), hrs(avgS?.state));
+    if (r.res_auto) row("mdi:gauge", this._t("res_auto"), st("res_auto")?.state && !["unknown", "unavailable"].includes(st("res_auto").state) ? hrs(st("res_auto").state) : this._t("pending2"));
+    if (r.res_alert) {
+      const a = st("res_alert");
+      row("mdi:timer-alert-outline", this._t("alert_after"), "", `<div class="pc">
+        <button class="round sm" data-act="num-" data-entity="${r.res_alert}"><ha-icon icon="mdi:minus"></ha-icon></button>
+        <span>${a ? (Number(a.state) ? this._fmt(a.state) + " h" : "—") : "—"}</span>
+        <button class="round sm" data-act="num+" data-entity="${r.res_alert}"><ha-icon icon="mdi:plus"></ha-icon></button></div>`);
+    }
+    if (r.pellet) row("mdi:grain", this._t("stove_reserve"), this._v("pellet") === "Empty" ? `<span class="red">${this._t("reserve_low")}</span>` : this._t("ok"));
+    if (stockS) {
+      const bags = stockS.attributes?.stock_bags, kg = stockS.attributes?.stock_kg;
+      if (bags != null || kg != null) row("mdi:silo", this._t("stock_left"), bags != null ? `${this._fmt(bags, 0)} ${this._t("bag_unit")}` : `${this._fmt(kg, 0)} kg`);
+      row("mdi:clock-outline", this._t("stock_auto"), stockS.state && !["unknown", "unavailable"].includes(stockS.state) ? hrs(stockS.state) : this._t("pending2"));
+    }
+    const per = st("res_hours")?.attributes?.bags_per_fill;
+    const fillLabel = stockS && per ? `${this._t("poured")} ${this._fmt(per, per % 1 ? 1 : 0)} ${this._t(Number(per) > 1 ? "bag_unit" : "bag_one")}` : this._t("filled");
+    const conf = this._confirm === "fill";
+    const close = overlay ? `<button class="round" data-act="page" data-page="close"><ha-icon icon="mdi:close"></ha-icon></button>` : "";
+    return `<div class="mhead"><ha-icon icon="mdi:grain" class="hicon"></ha-icon><b>${this._t("reservoir")}</b>${close}</div>
+      <div class="plist">${rows.join("")}</div>
+      ${r.res_filled ? `<button class="primary ${conf ? "warn" : ""}" data-act="fill"><ha-icon icon="mdi:basket-fill"></ha-icon>${conf ? this._t("confirm_fill") : fillLabel}</button>` : ""}`;
   }
 
   /* ------------------------------------------------------------ graphique 24 h */
@@ -815,6 +924,23 @@ class EdilkaminControlCard extends HTMLElement {
         const ns = n === "new" ? null : this._hass.states[v.p.setpoint];
         const step = Number(ns?.attributes?.step) || 0.5, lo = Number(ns?.attributes?.min ?? 10), hi = Number(ns?.attributes?.max ?? 28);
         this._setField(n, "setpoint", Math.min(hi, Math.max(lo, (Number(v.setpoint) || 20) + (val === "+" ? step : -step))));
+        break;
+      }
+      case "fill": {
+        if (this._confirm === "fill") {
+          this._confirm = null;
+          this._call("button", "press", { entity_id: this._resolved.res_filled });
+        } else {
+          this._confirm = "fill";
+          clearTimeout(this._ct);
+          this._ct = setTimeout(() => { this._confirm = null; this._sig = ""; this._render(); }, 4000);
+        }
+        this._sig = ""; this._render();
+        break;
+      }
+      case "move": {
+        const n = Number(el.dataset.n), to = n + Number(el.dataset.val);
+        if (to >= 1 && to <= this._resolved.profiles.length) this._call(ECC_DOMAIN, "move_profile", { profile: n, position: to });
         break;
       }
       case "tag": {
@@ -940,7 +1066,7 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .tag.sb { background: rgba(255,171,64,.20); color: #e08a00; }
 .tag.run { background: rgba(240,107,33,.16); color: var(--ecc-accent); }
 .tag.rx { background: rgba(46,165,95,.16); color: #2ea55f; }
-.tag.off { background: none; border: 1px dashed rgba(127,127,127,.4); text-decoration: line-through; opacity: .8; }
+.tag.off { background: rgba(127,127,127,.10); color: var(--secondary-text-color); opacity: .55; }
 .overlay { position: fixed; inset: 0; z-index: 9; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; }
 .sheet { width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; box-sizing: border-box; background: var(--card-background-color, #fff); color: var(--primary-text-color); border-radius: 20px 20px 0 0; padding: 12px 14px calc(16px + env(safe-area-inset-bottom)); }
 @media (min-width: 700px) { .overlay { align-items: center; } .sheet { border-radius: 20px; } }
@@ -949,7 +1075,18 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .mhead b { flex: 1; font-size: 17px; }
 .mhead .hicon { --mdc-icon-size: 22px; color: var(--ecc-accent); }
 .mlist { display: flex; flex-direction: column; gap: 6px; }
-.mrow { display: grid; grid-template-columns: 40px 1fr 20px; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 12px; background: var(--ecc-soft); border: 1px solid transparent; }
+.ord { display: flex; flex-direction: column; gap: 4px; }
+.round.xs { width: 26px; height: 26px; }
+.round:disabled { opacity: .3; cursor: default; }
+.tstep { display: flex; align-items: center; gap: 4px; height: 36px; }
+.tval { position: relative; min-width: 50px; text-align: center; font-weight: 600; font-size: 15px; cursor: pointer; }
+.tval input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+.plist { display: flex; flex-direction: column; }
+.prow { display: grid; grid-template-columns: 24px 1fr auto auto; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--divider-color, rgba(127,127,127,.2)); font-size: 14px; }
+.prow ha-icon { color: var(--secondary-text-color); }
+.prow b { font-weight: 600; }
+.primary.warn { background: #e53935; }
+.mrow { display: grid; grid-template-columns: 40px 1fr 26px; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 12px; background: var(--ecc-soft); border: 1px solid transparent; }
 .mrow.cur { border-color: rgba(240,107,33,.55); background: rgba(240,107,33,.08); }
 .mrow.dis .pn { opacity: .45; }
 .chev { color: var(--secondary-text-color); cursor: pointer; }
@@ -1104,6 +1241,6 @@ window.customCards.push({
   name: "Edilkamin Control",
   description: "Pilotage et programmation d'un poêle Edilkamin (Edilkamin Control)",
   preview: true,
-  documentationURL: "https://github.com/akoonet-homeassistant/edilkamin-control",
+  documentationURL: "https://github.com/akoonet-homeassistant/edilkamin_control",
 });
 console.info(`%c EDILKAMIN-CONTROL-CARD %c ${ECC_VERSION} `, "color:#fff;background:#f06b21;font-weight:700", "color:#f06b21");

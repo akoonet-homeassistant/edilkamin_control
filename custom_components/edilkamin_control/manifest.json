@@ -5,10 +5,10 @@
   "codeowners": [],
   "config_flow": true,
   "dependencies": ["frontend", "http"],
-  "documentation": "https://github.com/akoonet-homeassistant/edilkamin-control",
+  "documentation": "https://github.com/akoonet-homeassistant/edilkamin_control",
   "integration_type": "service",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/akoonet-homeassistant/edilkamin-control/issues",
+  "issue_tracker": "https://github.com/akoonet-homeassistant/edilkamin_control/issues",
   "requirements": [],
-  "version": "2026.11.2"
+  "version": "2026.11.3"
 }
