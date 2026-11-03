@@ -41,7 +41,7 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 ### Prérequis
 
 - Home Assistant 2024.11 ou plus récent (l'icône de l'intégration s'affiche à partir de 2026.3).
-- Un ESP32 **Wemos D1 Mini ESP32** près du poêle, avec le firmware Edilkamin Control (voir ci-dessous). Le firmware d'origine [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT) est aussi pris en charge (non testé), sans planning de secours ni ventilation 2.
+- Un ESP32 **Wemos D1 Mini ESP32** (https://www.amazon.fr/d%C3%A9veloppement-NodeMCU-Bluetooth-CH9102F-Compatible/dp/B0CJNMRG37) (ou équivalent) près du poêle, avec le firmware Edilkamin Control (voir ci-dessous). Le firmware d'origine [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT) est aussi pris en charge (non testé), sans planning de secours ni ventilation 2.
 - Un serveur **MQTT** (par exemple l'app Mosquitto de Home Assistant) et l'intégration MQTT : l'ESP32 publie toutes les entités du poêle en MQTT (thermostat, statut, Stand-by ; ventilation 2, Relax et Chrono si disponibles).
 
 ### Firmware ESP32
