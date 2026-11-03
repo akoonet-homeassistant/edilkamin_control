@@ -25,14 +25,16 @@
           "observe": "Observe mode (computes without driving the stove)",
           "ignitions": "Stove ignition counter",
           "ignition_log": "Existing ignition history (input_text)",
-          "stop_log": "Existing stop history (input_text)"
+          "stop_log": "Existing stop history (input_text)",
+          "firmware_url": "ESP32 firmware manifest (remote update)"
         },
         "data_description": {
           "presence": "Empty house: alarm armed away or vacation, person away, empty zone, switch off. Used by each schedule's “If away” setting.",
           "mqtt_topic": "Leave empty to send no schedule to the ESP32.",
           "schedule_format": "v1 for the akoonet-13 firmware (5 slots, no days or silent mode).",
           "observe": "To run the integration next to existing automations: commands are only written to the logbook.",
-          "ignition_log": "« dd/mm hh:mm ; … » list kept by an automation, newest first: imported into the card's Ignitions button."
+          "ignition_log": "« dd/mm hh:mm ; … » list kept by an automation, newest first: imported into the card's Ignitions button.",
+          "firmware_url": "Empty = project install page on GitHub. Can point to an ota.json file served by Home Assistant (/local/…) or another server."
         }
       }
     },
@@ -58,14 +60,16 @@
           "observe": "Observe mode (computes without driving the stove)",
           "ignitions": "Stove ignition counter",
           "ignition_log": "Existing ignition history (input_text)",
-          "stop_log": "Existing stop history (input_text)"
+          "stop_log": "Existing stop history (input_text)",
+          "firmware_url": "ESP32 firmware manifest (remote update)"
         },
         "data_description": {
           "presence": "Empty house: alarm armed away or vacation, person away, empty zone, switch off. Used by each schedule's “If away” setting.",
           "mqtt_topic": "Leave empty to send no schedule to the ESP32.",
           "schedule_format": "v1 for the akoonet-13 firmware (5 slots, no days or silent mode).",
           "observe": "To run the integration next to existing automations: commands are only written to the logbook.",
-          "ignition_log": "« dd/mm hh:mm ; … » list kept by an automation, newest first: imported into the card's Ignitions button."
+          "ignition_log": "« dd/mm hh:mm ; … » list kept by an automation, newest first: imported into the card's Ignitions button.",
+          "firmware_url": "Empty = project install page on GitHub. Can point to an ota.json file served by Home Assistant (/local/…) or another server."
         }
       }
     }
@@ -192,6 +196,11 @@
     "button": {
       "reservoir_filled": {
         "name": "Hopper refilled"
+      }
+    },
+    "update": {
+      "firmware": {
+        "name": "ESP32 firmware"
       }
     }
   },

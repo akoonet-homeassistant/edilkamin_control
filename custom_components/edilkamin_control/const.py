@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "edilkamin_control"
-VERSION = "2026.11.7"
+VERSION = "2026.11.8"
 
 # Clés de configuration (entrée de configuration / options)
 CONF_CLIMATE = "climate"
@@ -21,6 +21,8 @@ CONF_SCHEDULE_FORMAT = "schedule_format"
 CONF_IGNITIONS = "ignitions"
 CONF_IGNITION_LOG = "ignition_log"  # input_text « jj/mm hh:mm;… » d'une automatisation existante
 CONF_STOP_LOG = "stop_log"
+CONF_FIRMWARE_URL = "firmware_url"  # manifeste JSON du firmware ESP32 (mise à jour à distance)
+FIRMWARE_MANIFEST_URL = "https://akoonet-homeassistant.github.io/edilkamin_control/webflash/ota.json"
 
 # Entités du firmware recherchées sur le même appareil que le thermostat
 DEVICE_SUFFIXES: dict[str, tuple[str, tuple[str, ...]]] = {

@@ -28,7 +28,7 @@
 <body>
 <main>
   <h1>Edilkamin Control – firmware ESP32</h1>
-  <p class="ver">Version <b id="v">2026.11.1</b> · Wemos D1 Mini ESP32</p>
+  <p class="ver">Version <b id="v">2026.11.2</b> · Wemos D1 Mini ESP32</p>
 
   <section>
     <div class="install">
@@ -38,6 +38,12 @@
         <span slot="not-allowed">Page à ouvrir en HTTPS. · This page must be opened over HTTPS.</span>
       </esp-web-install-button>
     </div>
+  </section>
+
+  <section>
+    <h2>⚠️ Passage à la 2026.11.2 · Upgrading to 2026.11.2</h2>
+    <p>Cette version change la répartition de la mémoire de l'ESP32 pour permettre la mise à jour à distance. Installez-la <b>une dernière fois par USB</b> en répondant <b>oui</b> à « Effacer l'appareil », puis ressaisissez le Wi-Fi et le serveur MQTT via le Wi-Fi <code>Edilkamin_BT_AP</code>. Les versions suivantes s'installeront depuis Home Assistant (Paramètres → Mises à jour).</p>
+    <p class="muted">This release changes the ESP32 memory layout to allow remote updates. Install it <b>one last time over USB</b>, answering <b>yes</b> to “Erase device”, then enter Wi-Fi and MQTT again through the <code>Edilkamin_BT_AP</code> Wi-Fi. Later releases install from Home Assistant (Settings → Updates).</p>
   </section>
 
   <section>
@@ -66,7 +72,18 @@
   </section>
 
   <section>
-    <h2>Nouveautés · What's new — 2026.11.1</h2>
+    <h2>Nouveautés · What's new — 2026.11.2</h2>
+    <ul>
+      <li>Page web d'état à l'adresse de l'ESP32, protégée par mot de passe (identifiant <code>admin</code>, mot de passe réglé dans Home Assistant).<br>
+        <small>Status web page at the ESP32 address, password protected (user <code>admin</code>, password set in Home Assistant).</small></li>
+      <li>Adresse IP publiée en MQTT (entité « ESP32 adresse IP », lien « Visiter » sur l'appareil).<br><small>IP address published over MQTT.</small></li>
+      <li>Mise à jour à distance depuis Home Assistant ou depuis la page web, avec contrôle MD5 et retour à la version précédente en cas d'échec.<br>
+        <small>Remote update from Home Assistant or the web page, with MD5 check and rollback on failure.</small></li>
+      <li>Puissance manuelle (Man. P1 à P5) : le mode automatique du poêle est coupé avant l'envoi, la puissance est enfin appliquée.<br>
+        <small>Manual power (Man. P1 to P5): the stove's automatic mode is turned off first, so the power is now applied.</small></li>
+      <li>Lecture de l'horloge du poêle (valeurs brutes, format en cours d'identification).<br><small>Stove clock read (raw values, format being identified).</small></li>
+    </ul>
+    <h2>2026.11.1</h2>
     <ul>
       <li>Planning de secours v2 : jusqu'à 10 plages, jours de la semaine et silence (Relax), envoyé par l'intégration Edilkamin Control. Le format v1 (5 plages) reste accepté.<br>
         <small>Fallback schedule v2: up to 10 slots, days of the week and silent mode, sent by the Edilkamin Control integration. v1 (5 slots) still accepted.</small></li>

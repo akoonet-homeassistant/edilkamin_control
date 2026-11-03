@@ -36,7 +36,7 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 - **Historique des allumages** : les allumages des 3 derniers jours (heure d'allumage, d'arrêt, durée, total et moyenne), d'après le compteur d'allumages du poêle. Affiché par la tuile Allumages de la carte. L'historique déjà tenu par une automatisation (listes « jj/mm hh:mm ; … » en `input_text`) est repris et suivi.
 - **Mode observation** : l'intégration calcule tout mais n'envoie rien au poêle ; les ordres sont inscrits dans le journal. Pratique pour la faire tourner à côté d'automatisations existantes avant de basculer.
 - **Carte Lovelace** fournie et chargée automatiquement, avec éditeur visuel et choix de l'image du poêle (Edilkamin Bild 9+ par défaut, dessin simple ou image personnelle).
-- **Firmware ESP32** installable et mis à jour en un clic depuis le navigateur.
+- **Firmware ESP32** installable en un clic depuis le navigateur, puis mis à jour à distance depuis Home Assistant ; page web d'état protégée par mot de passe.
 
 ### Prérequis
 
@@ -53,7 +53,11 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 ![Installation du firmware](docs/screenshots/installation_firmware.png)
 
 - **Première installation** : garder le bouton **BOOT** de l'ESP32 appuyé en branchant le câble USB, cliquer sur **Installer**, répondre **oui** à « Effacer l'appareil ». Ensuite, se connecter au Wi-Fi `Edilkamin_BT_AP` pour saisir le Wi-Fi de la maison et le serveur MQTT, puis mettre le poêle en mode appairage Bluetooth. L'appareil « Edilkamin » apparaît dans Home Assistant (MQTT).
-- **Mise à jour** : cliquer sur **Installer** et répondre **non** à « Effacer l'appareil » : le Wi-Fi, le serveur MQTT et le planning de secours sont conservés. La version installée s'affiche dans Home Assistant (appareil Edilkamin, « Version du logiciel »).
+- **Mise à jour** : depuis le firmware 2026.11.2, le firmware se met à jour **à distance** depuis Home Assistant : **Paramètres → Mises à jour → Firmware de l'ESP32 → Installer** (entité de l'intégration). L'ESP32 télécharge le fichier, vérifie sa somme de contrôle (MD5) et redémarre ; en cas d'échec, il reste sur la version précédente. Un fichier `.bin` peut aussi être envoyé depuis la page web de l'ESP32.
+- **Passage à la 2026.11.2** : cette version change la répartition de la mémoire (deux emplacements de programme). Elle s'installe **une dernière fois par USB** en répondant **oui** à « Effacer l'appareil », puis il faut ressaisir le Wi-Fi et le serveur MQTT via le Wi-Fi `Edilkamin_BT_AP`. Le planning de secours est renvoyé par l'intégration.
+- **Page web** : `http://<adresse de l'ESP32>/` affiche l'état du poêle et de l'ESP32 (identifiant `admin`). Elle est désactivée tant qu'aucun mot de passe n'est défini (entité « Mot de passe de la page web » de l'appareil Edilkamin ; `-` la désactive). La page est en HTTP : à utiliser sur le réseau local. L'adresse IP est publiée en MQTT (entité « ESP32 adresse IP », lien « Visiter » sur l'appareil).
+
+![Page web de l'ESP32](docs/screenshots/page_web_esp32.png)
 
 **Sans la page d'installation** (installation manuelle avec [esptool](https://docs.espressif.com/projects/esptool/)), avec les fichiers du dossier [`webflash`](webflash) :
 
@@ -61,12 +65,13 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 |---|---|
 | [`bootloader.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/bootloader.bin) | `0x1000` |
 | [`partitions.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/partitions.bin) | `0x8000` |
+| [`boot_app0.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/boot_app0.bin) | `0xe000` |
 | [`firmware.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/firmware.bin) | `0x10000` |
 
 ```bash
 # Première installation
 esptool.py --chip esp32 erase_flash
-esptool.py --chip esp32 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin
+esptool.py --chip esp32 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin
 # Mise à jour (réglages conservés)
 esptool.py --chip esp32 write_flash 0x10000 firmware.bin
 ```
@@ -91,6 +96,7 @@ esptool.py --chip esp32 write_flash 0x10000 firmware.bin
      ![Options de l'historique](docs/screenshots/options_historique.png)
    - **Présence** : maison vide si l'alarme est en mode absence ou vacances, la personne absente, la zone vide ou l'interrupteur coupé.
    - **Sujet MQTT du planning de secours** : proposé d'après l'identifiant de l'ESP32 (`edilkamin/<id>/schedule`). Vide = pas d'envoi.
+   - **Manifeste du firmware ESP32** (facultatif) : adresse du fichier `ota.json` de la mise à jour à distance. Vide = page d'installation du projet ; peut pointer vers Home Assistant (`/local/…`) ou un autre serveur.
    - **Format du planning de secours** : `v2` (jusqu'à 10 plages, jours et silence, firmware 2026.11.1 ou plus récent) ou `v1` pour le firmware akoonet-13 (5 plages).
    - **Suivi Stock Pellet** et **sacs versés par remplissage** (affichés seulement si Suivi Stock Pellet est installé).
    - **Mode observation**.
@@ -163,6 +169,7 @@ Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
 | `sensor.poele_programmation_en_cours` | Programmation appliquée (attributs `profile`, `substitution`, `occupied`, `resync`, `observe`) |
 | `sensor.poele_prochain_changement` | Prochain début ou fin de plage |
 | `sensor.poele_dernier_allumage` | Dernier allumage (attribut `history` : allumages des 3 derniers jours, début et arrêt) |
+| `update.poele_firmware_de_l_esp32` | Firmware de l'ESP32 : version installée, dernière version, installation à distance (firmware 2026.11.2 ou plus récent ; le sujet MQTT du planning de secours doit être renseigné) |
 | `switch.poele_derogation_de_consigne` | Dérogation de consigne (attribut `reference`) |
 | `switch.poele_reglages_manuels` | Réglages manuels ; le couper = « Rendre la main » |
 | `switch.poele_priorite_silence_manuel` | Silence activé à la main, prioritaire jusqu'à minuit |
@@ -239,7 +246,7 @@ It does not touch the stove itself: everything goes through the entities publish
 - **Ignition history**: ignitions of the last 3 days (start, stop, duration, total and average), from the stove ignition counter. Shown by the card's Ignitions tile. A history already kept by an automation (« dd/mm hh:mm ; … » lists in `input_text`) is imported and followed.
 - **Observe mode**: the integration computes everything but sends nothing to the stove; commands are written to the logbook. Handy to run it next to existing automations before switching over.
 - **Lovelace card** included and loaded automatically, with a visual editor and a choice of stove picture (Edilkamin Bild 9+ by default, simple drawing or your own picture).
-- **ESP32 firmware** installed and updated in one click from the browser.
+- **ESP32 firmware** installed in one click from the browser, then updated remotely from Home Assistant; password-protected status web page.
 
 ### Requirements
 
@@ -254,7 +261,9 @@ It does not touch the stove itself: everything goes through the entities publish
 **👉 [https://akoonet-homeassistant.github.io/edilkamin_control/webflash/](https://akoonet-homeassistant.github.io/edilkamin_control/webflash/)**
 
 - **First install**: hold the ESP32 **BOOT** button while plugging the USB cable, click **Install**, answer **yes** to “Erase device”. Then join the `Edilkamin_BT_AP` Wi-Fi to enter your home Wi-Fi and MQTT broker, and put the stove in Bluetooth pairing mode. The “Edilkamin” device shows up in Home Assistant (MQTT).
-- **Update**: click **Install** and answer **no** to “Erase device”: Wi-Fi, MQTT broker and fallback schedule are kept. The installed version is shown in Home Assistant (Edilkamin device, “Software version”).
+- **Update**: since firmware 2026.11.2, the firmware updates **remotely** from Home Assistant: **Settings → Updates → ESP32 firmware → Install** (integration entity). The ESP32 downloads the file, checks its checksum (MD5) and restarts; on failure it stays on the previous version. A `.bin` file can also be sent from the ESP32 web page.
+- **Upgrading to 2026.11.2**: this release changes the memory layout (two program slots). Install it **one last time over USB**, answering **yes** to “Erase device”, then enter Wi-Fi and MQTT again through the `Edilkamin_BT_AP` Wi-Fi. The fallback schedule is sent again by the integration.
+- **Web page**: `http://<ESP32 address>/` shows the stove and ESP32 status (user `admin`). It stays disabled until a password is set (“Web page password” entity of the Edilkamin device; `-` disables it). The page uses plain HTTP: for the local network. The IP address is published over MQTT (“ESP32 IP address” entity, “Visit” link on the device).
 
 **Without the install page** (manual install with [esptool](https://docs.espressif.com/projects/esptool/)), using the files of the [`webflash`](webflash) folder:
 
@@ -262,12 +271,13 @@ It does not touch the stove itself: everything goes through the entities publish
 |---|---|
 | [`bootloader.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/bootloader.bin) | `0x1000` |
 | [`partitions.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/partitions.bin) | `0x8000` |
+| [`boot_app0.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/boot_app0.bin) | `0xe000` |
 | [`firmware.bin`](https://github.com/akoonet-homeassistant/edilkamin_control/raw/main/webflash/firmware.bin) | `0x10000` |
 
 ```bash
 # First install
 esptool.py --chip esp32 erase_flash
-esptool.py --chip esp32 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin
+esptool.py --chip esp32 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin
 # Update (settings kept)
 esptool.py --chip esp32 write_flash 0x10000 firmware.bin
 ```
@@ -290,6 +300,7 @@ esptool.py --chip esp32 write_flash 0x10000 firmware.bin
    - **Existing ignition / stop history** (`input_text`, optional): « dd/mm hh:mm » lists kept by an automation, newest first (« - » = running, « ? » = missed stop). Found automatically (`input_text.poele_…allumages` and `…arrets`); they feed the Ignitions tile as soon as the integration is installed.
    - **Presence**: empty house when the alarm is armed away or vacation, the person is away, the zone is empty or the switch is off.
    - **Fallback schedule MQTT topic**: suggested from the ESP32 identifier (`edilkamin/<id>/schedule`). Empty = nothing sent.
+   - **ESP32 firmware manifest** (optional): address of the remote update `ota.json` file. Empty = project install page; can point to Home Assistant (`/local/…`) or another server.
    - **Fallback schedule format**: `v2` (up to 10 slots, days and silent mode, firmware 2026.11.1 or newer) or `v1` for the akoonet-13 firmware (5 slots).
    - **Suivi Stock Pellet** and **bags poured per refill** (shown only when Suivi Stock Pellet is installed).
    - **Observe mode**.
@@ -343,6 +354,7 @@ The entity IDs depend on the entry name and on the Home Assistant language (show
 | `sensor.stove_current_schedule` | Applied schedule (attributes `profile`, `substitution`, `occupied`, `resync`, `observe`) |
 | `sensor.stove_next_change` | Next slot start or end |
 | `sensor.stove_last_ignition` | Last ignition (attribute `history`: ignitions of the last 3 days, start and stop) |
+| `update.stove_esp32_firmware` | ESP32 firmware: installed version, latest version, remote install (firmware 2026.11.2 or newer; the fallback schedule MQTT topic must be set) |
 | `switch.stove_setpoint_override` | Setpoint override (attribute `reference`) |
 | `switch.stove_manual_settings` | Manual settings; turning it off = “Give back” |
 | `switch.stove_manual_silent_priority` | Silent mode turned on by hand, priority until midnight |
