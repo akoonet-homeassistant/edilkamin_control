@@ -41,8 +41,8 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 ### Prérequis
 
 - Home Assistant 2024.11 ou plus récent (l'icône de l'intégration s'affiche à partir de 2026.3).
-- Un ESP32 **Wemos D1 Mini ESP32** (https://www.amazon.fr/d%C3%A9veloppement-NodeMCU-Bluetooth-CH9102F-Compatible/dp/B0CJNMRG37) (ou équivalent) près du poêle, avec le firmware Edilkamin Control (voir ci-dessous). Le firmware d'origine [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT) est aussi pris en charge (non testé), sans planning de secours ni ventilation 2.
-- Un serveur **MQTT** (par exemple l'app Mosquitto de Home Assistant) et l'intégration MQTT : l'ESP32 publie toutes les entités du poêle en MQTT (thermostat, statut, Stand-by ; ventilation 2, Relax et Chrono si disponibles).
+- Un ESP32 [Wemos D1 Mini ESP32](https://amzn.eu/d/00g3VR9p) (ou équivalent) près du poêle, avec le firmware Edilkamin Control (voir ci-dessous). Le firmware d'origine [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT) est aussi pris en charge (non testé), sans planning de secours ni ventilation 2.
+- Un serveur MQTT (par exemple l'app Mosquitto de Home Assistant) et l'intégration MQTT : l'ESP32 publie toutes les entités du poêle en MQTT (thermostat, statut, Stand-by ; ventilation 2, Relax et Chrono si disponibles).
 
 ### Firmware ESP32
 
@@ -251,8 +251,8 @@ It does not touch the stove itself: everything goes through the entities publish
 ### Requirements
 
 - Home Assistant 2024.11 or newer (the integration icon shows from 2026.3).
-- A **Wemos D1 Mini ESP32** next to the stove, running the Edilkamin Control firmware (see below). The original [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT) firmware is also supported (untested), without fallback schedule or fan 2.
-- An **MQTT** broker (for example the Mosquitto app of Home Assistant) and the MQTT integration: the ESP32 publishes every stove entity over MQTT (thermostat, status, Standby; fan 2, Relax and Chrono when available).
+- A [Wemos D1 Mini ESP32](https://amzn.eu/d/00g3VR9p) (or equivalent) next to the stove, running the Edilkamin Control firmware (see below). The original [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT) firmware is also supported (untested), without fallback schedule or fan 2.
+- An MQTT broker (for example Home Assistant's Mosquitto app) and the MQTT integration: the ESP32 publishes all stove entities over MQTT (thermostat, status, Standby; fan 2, Relax and Chrono when available).
 
 ### ESP32 firmware
 
