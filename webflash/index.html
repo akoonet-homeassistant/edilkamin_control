@@ -42,8 +42,8 @@
 
   <section>
     <h2>⚠️ Passage à la 2026.11.2 · Upgrading to 2026.11.2</h2>
-    <p>Cette version change la répartition de la mémoire de l'ESP32 pour permettre la mise à jour à distance. Installez-la <b>une dernière fois par USB</b> en répondant <b>oui</b> à « Effacer l'appareil », puis ressaisissez le Wi-Fi et le serveur MQTT via le Wi-Fi <code>Edilkamin_BT_AP</code>. Les versions suivantes s'installeront depuis Home Assistant (Paramètres → Mises à jour).</p>
-    <p class="muted">This release changes the ESP32 memory layout to allow remote updates. Install it <b>one last time over USB</b>, answering <b>yes</b> to “Erase device”, then enter Wi-Fi and MQTT again through the <code>Edilkamin_BT_AP</code> Wi-Fi. Later releases install from Home Assistant (Settings → Updates).</p>
+    <p>Cette version change la répartition de la mémoire de l'ESP32 pour permettre la mise à jour à distance. Installez-la <b>une dernière fois par USB</b> en répondant <b>non</b> à « Effacer l'appareil » : le Wi-Fi est conservé. Au redémarrage, l'ESP32 ouvre le Wi-Fi <code>Edilkamin_BT_AP</code> : connectez-vous-y, ouvrez <b>Setup</b> et ressaisissez seulement le serveur MQTT (les anciens réglages MQTT ne peuvent pas être repris). Les réglages sont désormais gardés comme le Wi-Fi, et les versions suivantes s'installeront depuis Home Assistant (Paramètres → Mises à jour).</p>
+    <p class="muted">This release changes the ESP32 memory layout to allow remote updates. Install it <b>one last time over USB</b>, answering <b>no</b> to “Erase device”: Wi-Fi is kept. On restart, the ESP32 opens the <code>Edilkamin_BT_AP</code> Wi-Fi: join it, open <b>Setup</b> and enter only the MQTT broker again (old MQTT settings cannot be carried over). Settings are now kept like Wi-Fi, and later releases install from Home Assistant (Settings → Updates).</p>
   </section>
 
   <section>

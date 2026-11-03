@@ -54,7 +54,7 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 
 - **Première installation** : garder le bouton **BOOT** de l'ESP32 appuyé en branchant le câble USB, cliquer sur **Installer**, répondre **oui** à « Effacer l'appareil ». Ensuite, se connecter au Wi-Fi `Edilkamin_BT_AP` pour saisir le Wi-Fi de la maison et le serveur MQTT, puis mettre le poêle en mode appairage Bluetooth. L'appareil « Edilkamin » apparaît dans Home Assistant (MQTT).
 - **Mise à jour** : depuis le firmware 2026.11.2, le firmware se met à jour **à distance** depuis Home Assistant : **Paramètres → Mises à jour → Firmware de l'ESP32 → Installer** (entité de l'intégration). L'ESP32 télécharge le fichier, vérifie sa somme de contrôle (MD5) et redémarre ; en cas d'échec, il reste sur la version précédente. Un fichier `.bin` peut aussi être envoyé depuis la page web de l'ESP32.
-- **Passage à la 2026.11.2** : cette version change la répartition de la mémoire (deux emplacements de programme). Elle s'installe **une dernière fois par USB** en répondant **oui** à « Effacer l'appareil », puis il faut ressaisir le Wi-Fi et le serveur MQTT via le Wi-Fi `Edilkamin_BT_AP`. Le planning de secours est renvoyé par l'intégration.
+- **Passage à la 2026.11.2** : cette version change la répartition de la mémoire (deux emplacements de programme). Elle s'installe **une dernière fois par USB** en répondant **non** à « Effacer l'appareil » : le Wi-Fi est conservé. Au redémarrage, l'ESP32 ouvre le Wi-Fi `Edilkamin_BT_AP` : s'y connecter, ouvrir **Setup** et ressaisir seulement le serveur MQTT. Le planning de secours est renvoyé par l'intégration. Les réglages (MQTT, mot de passe de la page) sont désormais enregistrés comme le Wi-Fi et survivent aux prochaines mises à jour.
 - **Page web** : `http://<adresse de l'ESP32>/` affiche l'état du poêle et de l'ESP32 (identifiant `admin`). Elle est désactivée tant qu'aucun mot de passe n'est défini (entité « Mot de passe de la page web » de l'appareil Edilkamin ; `-` la désactive). La page est en HTTP : à utiliser sur le réseau local. L'adresse IP est publiée en MQTT (entité « ESP32 adresse IP », lien « Visiter » sur l'appareil).
 
 ![Page web de l'ESP32](docs/screenshots/page_web_esp32.png)
@@ -71,6 +71,8 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 ```bash
 # Première installation
 esptool.py --chip esp32 erase_flash
+esptool.py --chip esp32 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin
+# Passage à la 2026.11.2 (Wi-Fi conservé, serveur MQTT à ressaisir)
 esptool.py --chip esp32 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin
 # Mise à jour (réglages conservés)
 esptool.py --chip esp32 write_flash 0x10000 firmware.bin
@@ -262,7 +264,7 @@ It does not touch the stove itself: everything goes through the entities publish
 
 - **First install**: hold the ESP32 **BOOT** button while plugging the USB cable, click **Install**, answer **yes** to “Erase device”. Then join the `Edilkamin_BT_AP` Wi-Fi to enter your home Wi-Fi and MQTT broker, and put the stove in Bluetooth pairing mode. The “Edilkamin” device shows up in Home Assistant (MQTT).
 - **Update**: since firmware 2026.11.2, the firmware updates **remotely** from Home Assistant: **Settings → Updates → ESP32 firmware → Install** (integration entity). The ESP32 downloads the file, checks its checksum (MD5) and restarts; on failure it stays on the previous version. A `.bin` file can also be sent from the ESP32 web page.
-- **Upgrading to 2026.11.2**: this release changes the memory layout (two program slots). Install it **one last time over USB**, answering **yes** to “Erase device”, then enter Wi-Fi and MQTT again through the `Edilkamin_BT_AP` Wi-Fi. The fallback schedule is sent again by the integration.
+- **Upgrading to 2026.11.2**: this release changes the memory layout (two program slots). Install it **one last time over USB**, answering **no** to “Erase device”: Wi-Fi is kept. On restart, the ESP32 opens the `Edilkamin_BT_AP` Wi-Fi: join it, open **Setup** and enter only the MQTT broker again. The fallback schedule is sent again by the integration. Settings (MQTT, web page password) are now stored like Wi-Fi and survive future updates.
 - **Web page**: `http://<ESP32 address>/` shows the stove and ESP32 status (user `admin`). It stays disabled until a password is set (“Web page password” entity of the Edilkamin device; `-` disables it). The page uses plain HTTP: for the local network. The IP address is published over MQTT (“ESP32 IP address” entity, “Visit” link on the device).
 
 **Without the install page** (manual install with [esptool](https://docs.espressif.com/projects/esptool/)), using the files of the [`webflash`](webflash) folder:
@@ -277,6 +279,8 @@ It does not touch the stove itself: everything goes through the entities publish
 ```bash
 # First install
 esptool.py --chip esp32 erase_flash
+esptool.py --chip esp32 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin
+# Upgrading to 2026.11.2 (Wi-Fi kept, MQTT broker to enter again)
 esptool.py --chip esp32 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin
 # Update (settings kept)
 esptool.py --chip esp32 write_flash 0x10000 firmware.bin
