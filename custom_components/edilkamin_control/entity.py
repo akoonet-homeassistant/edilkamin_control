@@ -63,7 +63,7 @@ class ProfileEntity(EdilkaminEntity):
         i = self.ctl.index_of(self.pid)
         attrs: dict[str, Any] = {"profile": (i + 1) if i is not None else None, "profile_id": self.pid}
         if self.field == "active" and self.profile:
-            attrs[F_DAYS] = self.profile[F_DAYS]
+            attrs[F_DAYS] = list(self.profile[F_DAYS])
         return attrs
 
     async def set_value(self, value: Any) -> None:

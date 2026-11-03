@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime
 from typing import Any
 
@@ -71,7 +72,8 @@ class IgnitionHistory(EdilkaminEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return {"history": self.ctl.ignition_history(), "counter": self.ctl.ignitions_entity}
+        # copie : un arrêt modifie la liste en place, HA ne verrait aucun changement
+        return {"history": deepcopy(self.ctl.ignition_history()), "counter": self.ctl.ignitions_entity}
 
 
 class NextChange(EdilkaminEntity, SensorEntity):
@@ -106,7 +108,7 @@ class HoursSensor(EdilkaminEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any] | None:
         key = self._attr_translation_key
         if key == "reservoir_average":
-            return {"durations": self.ctl.reservoir.get("durations"), "last_load_kg": self.ctl.reservoir.get("last_load")}
+            return {"durations": list(self.ctl.reservoir.get("durations") or []), "last_load_kg": self.ctl.reservoir.get("last_load")}
         if key == "reservoir_hours":
             return {"bags_per_fill": self.ctl.cfg.get("bags_per_fill"), "pellet_tracking": bool(self.ctl.pellet_consumed)}
         if key == "stock_autonomy" and self.ctl.pellet_stock:
