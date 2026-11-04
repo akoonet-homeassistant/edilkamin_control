@@ -2,7 +2,7 @@
 
 # Edilkamin Control
 
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://hacs.xyz/)
 ![Version](https://img.shields.io/github/v/release/akoonet-homeassistant/edilkamin_control)
 
 🇫🇷 [Français](#français) · 🇬🇧 [English](#english)
@@ -81,9 +81,14 @@ esptool.py --chip esp32 write_flash 0x10000 firmware.bin
 
 ### Installation
 
-1. HACS → menu ⋮ en haut à droite → **Dépôts personnalisés** → dépôt `https://github.com/akoonet-homeassistant/edilkamin_control`, type **Intégration** → **Ajouter**.
-2. Installer **Edilkamin Control**, puis redémarrer Home Assistant.
-3. Paramètres → Appareils et services → **Ajouter une intégration** → Edilkamin Control.
+Edilkamin Control fait partie des dépôts **HACS par défaut** : aucun dépôt personnalisé à ajouter.
+
+[![Ouvrir dans HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=akoonet-homeassistant&repository=edilkamin_control&category=integration)
+
+1. HACS → rechercher **Edilkamin Control** → **Télécharger**, puis redémarrer Home Assistant.
+2. Paramètres → Appareils et services → **Ajouter une intégration** → Edilkamin Control.
+
+Si vous aviez ajouté le dépôt dans les **Dépôts personnalisés** de HACS, vous pouvez retirer cette entrée : l'intégration installée et sa configuration sont conservées.
 
 ### Configuration
 
@@ -290,9 +295,14 @@ esptool.py --chip esp32 write_flash 0x10000 firmware.bin
 
 ### Installation
 
-1. HACS → ⋮ menu (top right) → **Custom repositories** → repository `https://github.com/akoonet-homeassistant/edilkamin_control`, type **Integration** → **Add**.
-2. Install **Edilkamin Control**, then restart Home Assistant.
-3. Settings → Devices & services → **Add integration** → Edilkamin Control.
+Edilkamin Control is part of the **HACS default** repositories: no custom repository needed.
+
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=akoonet-homeassistant&repository=edilkamin_control&category=integration)
+
+1. HACS → search for **Edilkamin Control** → **Download**, then restart Home Assistant.
+2. Settings → Devices & services → **Add integration** → Edilkamin Control.
+
+If you had added the repository to HACS **Custom repositories**, you can remove that entry: the installed integration and its settings are kept.
 
 ### Configuration
 
