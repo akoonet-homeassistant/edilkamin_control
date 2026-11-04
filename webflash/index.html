@@ -28,7 +28,7 @@
 <body>
 <main>
   <h1>Edilkamin Control – firmware ESP32</h1>
-  <p class="ver">Version <b id="v">2026.11.2</b> · Wemos D1 Mini ESP32</p>
+  <p class="ver">Version <b id="v">2026.11.3</b> · Wemos D1 Mini ESP32</p>
 
   <section>
     <div class="install">
@@ -72,7 +72,16 @@
   </section>
 
   <section>
-    <h2>Nouveautés · What's new — 2026.11.2</h2>
+    <h2>Nouveautés · What's new — 2026.11.3</h2>
+    <ul>
+      <li>Le Bluetooth du poêle est libéré plus vite : la température est lue en premier, les lectures sont rapprochées et l'ESP32 se déconnecte dès que toutes les valeurs sont relues (au lieu de rester 30 s). La télécommande et l'application Edilkamin trouvent le poêle libre plus souvent.<br>
+        <small>The stove Bluetooth is released sooner: temperature is read first, reads are closer together and the ESP32 disconnects as soon as all values are read (instead of staying 30 s). The remote and the Edilkamin app find the stove free more often.</small></li>
+      <li>Nouveaux capteurs « Occupation du Bluetooth » (% sur 15 min) et « Durée de connexion Bluetooth », aussi affichés sur la page web.<br>
+        <small>New “Bluetooth occupancy” (% over 15 min) and “Bluetooth connection duration” sensors, also shown on the web page.</small></li>
+      <li>S'installe à distance depuis Home Assistant (Paramètres → Mises à jour) si l'ESP32 est déjà en 2026.11.2.<br>
+        <small>Installs remotely from Home Assistant (Settings → Updates) when the ESP32 already runs 2026.11.2.</small></li>
+    </ul>
+    <h2>2026.11.2</h2>
     <ul>
       <li>Page web d'état à l'adresse de l'ESP32, protégée par mot de passe (identifiant <code>admin</code>, mot de passe réglé dans Home Assistant).<br>
         <small>Status web page at the ESP32 address, password protected (user <code>admin</code>, password set in Home Assistant).</small></li>

@@ -1,7 +1,7 @@
 {
-  "version": "2026.11.2",
+  "version": "2026.11.3",
   "url": "firmware.bin",
-  "md5": "dc2e8716ec55b47ed40a4cfdc3cd3ae8",
+  "md5": "f9b663db4c1423234357d7da4955e523",
   "release_url": "https://akoonet-homeassistant.github.io/edilkamin_control/webflash/",
-  "summary": "Page web protégée par mot de passe, adresse IP en MQTT, lecture de l'horloge du poêle, mise à jour à distance, puissance manuelle (Man. P1 à P5) appliquée."
+  "summary": "Bluetooth du poêle libéré plus vite : température lue en premier, lectures rapprochées, déconnexion dès la fin du cycle. Nouveaux capteurs : occupation du Bluetooth et durée de connexion."
 }
