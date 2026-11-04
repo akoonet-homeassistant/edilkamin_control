@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.11";
+const ECC_VERSION = "2026.11.12";
 
 // Échappement HTML de toute valeur venant de Home Assistant ou de la configuration
 // (noms de programmation, états, options, libellés d'alarme, noms d'entités…)
