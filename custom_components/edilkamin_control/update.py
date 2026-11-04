@@ -68,6 +68,14 @@ class FirmwareUpdate(EdilkaminEntity, UpdateEntity):
         self.hass.async_create_task(self._check())
 
     async def _check(self, _now=None) -> None:
+        await self._fetch_manifest()
+        self.async_write_ha_state()
+
+    async def async_update(self) -> None:
+        """« Rechercher les mises à jour » (homeassistant.update_entity) : relit le manifeste."""
+        await self._fetch_manifest()
+
+    async def _fetch_manifest(self) -> None:
         try:
             resp = await async_get_clientsession(self.hass).get(self._manifest_url, timeout=20)
             resp.raise_for_status()
@@ -77,7 +85,6 @@ class FirmwareUpdate(EdilkaminEntity, UpdateEntity):
                 self._manifest = data
         except Exception as err:  # noqa: BLE001
             _LOGGER.debug("Manifeste du firmware illisible (%s) : %s", self._manifest_url, err)
-        self.async_write_ha_state()
 
     @property
     def available(self) -> bool:

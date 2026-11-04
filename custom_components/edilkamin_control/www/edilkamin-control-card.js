@@ -4,7 +4,12 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.10";
+const ECC_VERSION = "2026.11.11";
+
+// Échappement HTML de toute valeur venant de Home Assistant ou de la configuration
+// (noms de programmation, états, options, libellés d'alarme, noms d'entités…)
+const ECC_ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const eccE = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ECC_ESC[c]);
 
 const ECC_I18N = {
   fr: {
@@ -309,18 +314,18 @@ class EdilkaminControlCard extends HTMLElement {
     const profTxt = !this._resolved.current_profile ? "" :
       (!prof || prof === "Aucun" || prof === "none" ? this._t("no_profile") : prof + (forced && opts[0] && forced !== opts[0] ? " · " + this._t("forced") : ""));
     const profChip = this._resolved.forced_profile
-      ? `<label class="chip sel"><ha-icon icon="mdi:calendar-clock"></ha-icon><span>${profTxt}</span><ha-icon icon="mdi:chevron-down"></ha-icon>
-           <select data-sel="forced_profile">${opts.map((o) => `<option ${o === forced ? "selected" : ""}>${o}</option>`).join("")}</select></label>`
-      : (profTxt ? `<span class="chip"><ha-icon icon="mdi:calendar-clock"></ha-icon><span>${profTxt}</span></span>` : "");
+      ? `<label class="chip sel"><ha-icon icon="mdi:calendar-clock"></ha-icon><span>${eccE(profTxt)}</span><ha-icon icon="mdi:chevron-down"></ha-icon>
+           <select data-sel="forced_profile">${opts.map((o) => `<option value="${eccE(o)}" ${o === forced ? "selected" : ""}>${eccE(o)}</option>`).join("")}</select></label>`
+      : (profTxt ? `<span class="chip"><ha-icon icon="mdi:calendar-clock"></ha-icon><span>${eccE(profTxt)}</span></span>` : "");
 
     // infos
     const pr = a.preset_mode || "Auto";
     const p = this._realPower();
-    const puis = pr === "Auto" ? `${this._t("power")} ${this._t("power_auto")}${p ? ` (P${p} ${this._t("in_progress")})` : ""}` : `${this._t("power")} ${pr.replace("Man. ", "")}`;
+    const puis = pr === "Auto" ? `${this._t("power")} ${this._t("power_auto")}${p ? ` (P${eccE(p)} ${this._t("in_progress")})` : ""}` : `${this._t("power")} ${eccE(pr.replace("Man. ", ""))}`;
     const relax = this._v("relax") === "on";
     const real = (k) => { const v = this._v(k); return v === undefined || v === "unknown" || v === "unavailable" ? null : Number(v); };
     const rf = (k) => { const v = real(k); return v === null ? "" : v ? ` (${v}%)` : ` (${this._t("stopped")})`; };
-    const lbl = (m) => (!m ? "—" : m === "Auto" ? "Auto" : m);
+    const lbl = (m) => (!m ? "—" : m === "Auto" ? "Auto" : eccE(m));
     const fan2 = this._v("fan2");
     const ventil = relax
       ? `<span class="green">${this._t("relax")}</span>`
@@ -331,9 +336,9 @@ class EdilkaminControlCard extends HTMLElement {
     const conf = this._confirm === "power";
     return `
     <div class="head">
-      <div class="title">${this._config.title || this._t("title")}${this._thermometer()}</div>
+      <div class="title">${eccE(this._config.title || this._t("title"))}${this._thermometer()}</div>
       <div class="hdr-right">${profChip}</div>
-      <div class="state" style="color:${stc}">${etat}</div>
+      <div class="state" style="color:${stc}">${eccE(etat)}</div>
       <div class="anim">${this._stove(ph, veille, low)}</div>
       <div class="thermo">${this._dial(a, ph)}</div>
       <div class="infos">${puis}<br>${ventil}${low ? `<br><span class="red">⚠ ${this._t("pellets_low")}</span>` : ""}</div>
@@ -343,8 +348,8 @@ class EdilkaminControlCard extends HTMLElement {
         <ha-icon icon="${on ? "mdi:fire" : "mdi:fire-off"}"></ha-icon>
         <span>${conf ? this._t(on ? "confirm_off" : "confirm_on") : this._t(on ? "lit" : "unlit")}</span>
       </button>
-      <button class="btn" data-act="more" data-entity="${this._resolved.climate}">
-        <ha-icon icon="mdi:tune-variant"></ha-icon><span>${this._t("power")} ${pr === "Auto" ? this._t("power_auto") : pr.slice(-1)}</span>
+      <button class="btn" data-act="more" data-entity="${eccE(this._resolved.climate)}">
+        <ha-icon icon="mdi:tune-variant"></ha-icon><span>${this._t("power")} ${pr === "Auto" ? this._t("power_auto") : eccE(pr.slice(-1))}</span>
       </button>
     </div>`;
   }
@@ -357,7 +362,7 @@ class EdilkaminControlCard extends HTMLElement {
     const v = st && !["unknown", "unavailable"].includes(st.state) ? this._fmt(st.state) : "—";
     const unit = st?.attributes?.unit_of_measurement || "°C";
     const name = this._config.temperature_name ?? st?.attributes?.friendly_name ?? "";
-    return `<div class="tsub" data-act="more" data-entity="${id}" title="${name}"><ha-icon icon="mdi:thermometer"></ha-icon>${name ? `<small>${name} :</small>` : ""}<span>${v}${unit}</span></div>`;
+    return `<div class="tsub" data-act="more" data-entity="${eccE(id)}" title="${eccE(name)}"><ha-icon icon="mdi:thermometer"></ha-icon>${name ? `<small>${eccE(name)} :</small>` : ""}<span>${eccE(v)}${eccE(unit)}</span></div>`;
   }
 
   /* Cadran du thermostat (comme la commande de thermostat de Home Assistant) */
@@ -436,6 +441,7 @@ class EdilkaminControlCard extends HTMLElement {
     if (alarm) lcd = this._t("alarm").toUpperCase();
     else if (veille) lcd = "STAND-BY";
     else if (ph !== "off") lcd = `${this._fmt(a.current_temperature)}°>${this._fmt(a.temperature)}° P${this._realPower() || "-"}`;
+    lcd = eccE(lcd);
     const lcdCol = alarm ? "#ff5252" : "#7cffb2";
     return `
     <svg viewBox="0 0 100 150" class="stove ${kk > 0 ? "lit" : ""}">
@@ -468,8 +474,8 @@ class EdilkaminControlCard extends HTMLElement {
   }
 
   _dd(kind, label, options, cur, disp, entity) {
-    return `<label class="dd"><small>${label}</small><span>${disp ? disp(cur) : cur ?? "—"}</span><ha-icon icon="mdi:chevron-down"></ha-icon>
-      <select data-dd="${kind}" ${entity ? `data-entity="${entity}"` : ""}>${options.map((o) => `<option value="${o}" ${o === cur ? "selected" : ""}>${disp ? disp(o) : o}</option>`).join("")}</select></label>`;
+    return `<label class="dd"><small>${eccE(label)}</small><span>${eccE(disp ? disp(cur) : cur ?? "—")}</span><ha-icon icon="mdi:chevron-down"></ha-icon>
+      <select data-dd="${eccE(kind)}" ${entity ? `data-entity="${eccE(entity)}"` : ""}>${options.map((o) => `<option value="${eccE(o)}" ${o === cur ? "selected" : ""}>${eccE(disp ? disp(o) : o)}</option>`).join("")}</select></label>`;
   }
 
   /* Image personnelle du poêle : les flammes sont dessinées dans la vitre (image_window, en % de l'image) */
@@ -513,13 +519,14 @@ class EdilkaminControlCard extends HTMLElement {
     if (alarm) lcd = this._t("alarm").toUpperCase();
     else if (veille) lcd = "STAND-BY";
     else if (ph !== "off") lcd = `${this._fmt(a.current_temperature)}°>${this._fmt(a.temperature)}° P${this._realPower() || "-"}`;
+    lcd = eccE(lcd);
     const filter = alarm ? "drop-shadow(0 0 6px #e53935)" : lit ? "drop-shadow(0 0 8px rgba(255,120,0,.45))" : "none";
     const frame = this._config.image_calibration ? "outline:1px dashed red;" : "";
     return `
     <div class="imgw">
-      <img src="${src}" alt="" style="filter:${filter}" class="${alarm ? "blink" : ""}">
+      <img src="${eccE(src)}" alt="" style="filter:${filter}" class="${alarm ? "blink" : ""}">
       <svg viewBox="0 0 100 12" preserveAspectRatio="none" class="imgwaves">${waves}</svg>
-      <div class="imgwin" style="left:${w.x}%;top:${w.y}%;width:${w.width}%;height:${w.height}%;${frame}">
+      <div class="imgwin" style="left:${Number(w.x) || 0}%;top:${Number(w.y) || 0}%;width:${Number(w.width) || 0}%;height:${Number(w.height) || 0}%;${frame}">
         <svg viewBox="0 0 100 100" preserveAspectRatio="none">
           <defs>
             <linearGradient id="eccF2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff6f00"/><stop offset=".6" stop-color="#ffa000"/><stop offset="1" stop-color="#ffd54f"/></linearGradient>
@@ -544,7 +551,7 @@ class EdilkaminControlCard extends HTMLElement {
       const st = this._s(key);
       if (!st) return "";
       const on = st.state === "on";
-      return `<button class="btn ${on ? "act" : ""}" data-act="toggle" data-entity="${this._resolved[key]}"><ha-icon icon="${icon}"></ha-icon><span>${label}</span><span class="dot ${on ? "on" : ""}"></span></button>`;
+      return `<button class="btn ${on ? "act" : ""}" data-act="toggle" data-entity="${eccE(this._resolved[key])}"><ha-icon icon="${icon}"></ha-icon><span>${label}</span><span class="dot ${on ? "on" : ""}"></span></button>`;
     };
     const cur = a.preset_mode || "Auto";
     return `
@@ -578,20 +585,20 @@ class EdilkaminControlCard extends HTMLElement {
     const r = this._resolved, out = [];
     const planning = this._s("planning");
     out.push(`<div class="sec-title">${this._t("planning")}
-      ${planning ? `<button class="mini ${planning.state === "on" ? "on" : ""}" data-act="toggle" data-entity="${r.planning}">
+      ${planning ? `<button class="mini ${planning.state === "on" ? "on" : ""}" data-act="toggle" data-entity="${eccE(r.planning)}">
         <ha-icon icon="${planning.state === "on" ? "mdi:calendar-check" : "mdi:calendar-remove"}"></ha-icon>${this._t(planning.state === "on" ? "planning_on" : "planning_off")}</button>` : ""}</div>`);
     const ov = this._s("override");
     if (ov?.state === "on") {
       out.push(`<div class="banner"><ha-icon icon="mdi:hand-back-right"></ha-icon>
-        <div><b>${this._t("override")} ${this._fmt(this._s("climate")?.attributes?.temperature)} °C</b><br><span>${this._t("override_txt")}${this._nextSlot() ? " (" + this._nextSlot() + ")" : ""}</span></div>
-        <button data-act="off" data-entity="${r.override}">${this._t("cancel")}</button></div>`);
+        <div><b>${this._t("override")} ${this._fmt(this._s("climate")?.attributes?.temperature)} °C</b><br><span>${this._t("override_txt")}${this._nextSlot() ? " (" + eccE(this._nextSlot()) + ")" : ""}</span></div>
+        <button data-act="off" data-entity="${eccE(r.override)}">${this._t("cancel")}</button></div>`);
     }
     const man = this._s("manual");
     if (man?.state === "on") {
       const nx = this._nextSlot();
       out.push(`<div class="banner"><ha-icon icon="mdi:hand-back-right-outline"></ha-icon>
-        <div><b>${this._t("manual")}</b><br><span>${this._t("manual_txt")} ${nx || this._t("next_slot")}</span></div>
-        <button data-act="off" data-entity="${r.manual}">${this._t("give_back")}</button></div>`);
+        <div><b>${this._t("manual")}</b><br><span>${this._t("manual_txt")} ${eccE(nx || this._t("next_slot"))}</span></div>
+        <button data-act="off" data-entity="${eccE(r.manual)}">${this._t("give_back")}</button></div>`);
     }
     const cur = this._v("current_profile");
     out.push(`<div class="profiles">${r.profiles.map((p) => this._profileRow(p, cur)).join("")}</div>
@@ -622,12 +629,12 @@ class EdilkaminControlCard extends HTMLElement {
     return `
     <div class="pwrap ${isCur ? "cur" : ""}">
     <div class="prof ${active ? "" : "dis"}">
-      <button class="sw ${active ? "on" : ""}" data-act="toggle" data-entity="${p.active}" title="${name}"><span></span></button>
-      <div class="pn" data-act="page" data-page="${p.n}"><b>${name}</b><span>${hours} · ${this._days(days)}</span>${tags}</div>
+      <button class="sw ${active ? "on" : ""}" data-act="toggle" data-entity="${eccE(p.active)}" title="${eccE(name)}"><span></span></button>
+      <div class="pn" data-act="page" data-page="${p.n}"><b>${eccE(name)}</b><span>${eccE(hours)} · ${eccE(this._days(days))}</span>${tags}</div>
       <div class="pc">
-        <button class="round sm" data-act="num-" data-entity="${p.setpoint}"><ha-icon icon="mdi:minus"></ha-icon></button>
+        <button class="round sm" data-act="num-" data-entity="${eccE(p.setpoint)}"><ha-icon icon="mdi:minus"></ha-icon></button>
         <span>${this._fmt(sp)}°</span>
-        <button class="round sm" data-act="num+" data-entity="${p.setpoint}"><ha-icon icon="mdi:plus"></ha-icon></button>
+        <button class="round sm" data-act="num+" data-entity="${eccE(p.setpoint)}"><ha-icon icon="mdi:plus"></ha-icon></button>
       </div>
     </div>
     </div>`;
@@ -675,8 +682,8 @@ class EdilkaminControlCard extends HTMLElement {
         const v = this._vals(p.n);
         const isCur = this._curN() === p.n;
         return `<div class="mrow ${v.active ? "" : "dis"} ${isCur ? "cur" : ""}">
-          <button class="sw ${v.active ? "on" : ""}" data-act="toggle" data-entity="${p.active}"><span></span></button>
-          <div class="pn" data-act="page" data-page="${p.n}"><b>${v.name}</b><span>${v.start === v.end ? this._t("all_day") : v.start + " → " + v.end} · ${this._days(v.days)} · ${this._fmt(v.setpoint)} °C</span>${this._tags(v, p.n)}</div>
+          <button class="sw ${v.active ? "on" : ""}" data-act="toggle" data-entity="${eccE(p.active)}"><span></span></button>
+          <div class="pn" data-act="page" data-page="${p.n}"><b>${eccE(v.name)}</b><span>${v.start === v.end ? this._t("all_day") : eccE(v.start + " → " + v.end)} · ${eccE(this._days(v.days))} · ${this._fmt(v.setpoint)} °C</span>${this._tags(v, p.n)}</div>
           <div class="ord">
             <button class="round xs" data-act="move" data-n="${p.n}" data-val="-1" title="${this._t("move_up")}" ${p.n === 1 ? "disabled" : ""}><ha-icon icon="mdi:chevron-up"></ha-icon></button>
             <button class="round xs" data-act="move" data-n="${p.n}" data-val="1" title="${this._t("move_down")}" ${p.n === this._resolved.profiles.length ? "disabled" : ""}><ha-icon icon="mdi:chevron-down"></ha-icon></button>
@@ -694,14 +701,14 @@ class EdilkaminControlCard extends HTMLElement {
     const o = Object.assign(this._defOpts(), Object.fromEntries(Object.entries(v.opts || {}).filter(([, x]) => x)));
     const D = this._t("days");
     const dd = (f, label, disp) => (v[f] == null || !o[f] ? "" :
-      `<label class="dd"><small>${label}</small><span>${disp ? disp(v[f]) : v[f]}</span><ha-icon icon="mdi:chevron-down"></ha-icon>
-        <select data-f="${f}" data-n="${n}">${o[f].map((x) => `<option value="${x}" ${x === v[f] ? "selected" : ""}>${disp ? disp(x) : x}</option>`).join("")}</select></label>`);
+      `<label class="dd"><small>${eccE(label)}</small><span>${eccE(disp ? disp(v[f]) : v[f])}</span><ha-icon icon="mdi:chevron-down"></ha-icon>
+        <select data-f="${f}" data-n="${n}">${o[f].map((x) => `<option value="${eccE(x)}" ${x === v[f] ? "selected" : ""}>${eccE(disp ? disp(x) : x)}</option>`).join("")}</select></label>`);
     const sb = v.mode === "standby";
     const delConf = this._confirm === "del" + n;
     return `<div class="mhead"><button class="round" data-act="page" data-page="list"><ha-icon icon="mdi:arrow-left"></ha-icon></button>
-        <b>${n === "new" ? this._t("new_schedule") : v.name}</b>${close}</div>
+        <b>${n === "new" ? this._t("new_schedule") : eccE(v.name)}</b>${close}</div>
       <div class="pedit">
-        <label class="fld"><small>${this._t("name")}</small><input data-f="name" data-n="${n}" value="${String(v.name).replace(/"/g, "&quot;")}"></label>
+        <label class="fld"><small>${this._t("name")}</small><input data-f="name" data-n="${n}" value="${eccE(v.name)}"></label>
         <div class="frow">
           ${this._timeStepper(n, "start", this._t("start"), v.start)}
           ${this._timeStepper(n, "end", this._t("end"), v.end)}
@@ -741,7 +748,7 @@ class EdilkaminControlCard extends HTMLElement {
     const pend = this._pend && this._pend.n === n && this._pend.f === f ? this._pend.v : value;
     return `<div class="fld"><small>${label}</small><div class="tstep">
       <button class="round sm" data-hold="-5" data-n="${n}" data-f2="${f}"><ha-icon icon="mdi:minus"></ha-icon></button>
-      <label class="tval"><span>${pend}</span><input type="time" data-f="${f}" data-n="${n}" value="${pend}"></label>
+      <label class="tval"><span>${eccE(pend)}</span><input type="time" data-f="${f}" data-n="${n}" value="${eccE(pend)}"></label>
       <button class="round sm" data-hold="5" data-n="${n}" data-f2="${f}"><ha-icon icon="mdi:plus"></ha-icon></button></div></div>`;
   }
 
@@ -774,9 +781,9 @@ class EdilkaminControlCard extends HTMLElement {
 
   _tags(v, n) {
     if (!v) return "";
-    const t = (f, label, cls) => `<button class="tag ${cls || ""}" data-act="tag" data-n="${n}" data-f="${f}">${label}</button>`;
+    const t = (f, label, cls) => `<button class="tag ${cls || ""}" data-act="tag" data-n="${n}" data-f="${f}">${eccE(label)}</button>`;
     const l1 = [
-      v.power != null ? t("power", v.power === "Auto" ? "P Auto" : v.power.replace("Man. ", "")) : "",
+      v.power != null ? t("power", v.power === "Auto" ? "P Auto" : String(v.power).replace("Man. ", "")) : "",
       v.fan1 != null ? t("fan1", "V1 " + v.fan1) : "",
       v.fan2 != null ? t("fan2", "V2 " + v.fan2) : "",
     ].join("");
@@ -808,8 +815,8 @@ class EdilkaminControlCard extends HTMLElement {
 
   _tracking() {
     const tile = (icon, label, value, color, entity) => `
-      <div class="tile" data-act="more" data-entity="${entity || ""}">
-        <ha-icon icon="${icon}" style="color:${color}"></ha-icon><span class="tl">${label}</span><span class="tv">${value}</span></div>`;
+      <div class="tile" data-act="more" data-entity="${eccE(entity)}">
+        <ha-icon icon="${icon}" style="color:${color}"></ha-icon><span class="tl">${eccE(label)}</span><span class="tv">${eccE(value)}</span></div>`;
     const ign = this._v("ignitions");
     const al = this._v("alarm") === "on";
     const lab = this._v("alarm_label");
@@ -820,7 +827,7 @@ class EdilkaminControlCard extends HTMLElement {
     ${graph}
     <div class="tiles">
       ${this._resolved.ignitions || this._resolved.ign_hist ? `<div class="tile" data-act="page" data-page="ignitions">
-        <ha-icon icon="mdi:fire-circle" style="color:#f06b21"></ha-icon><span class="tl">${this._t("ignitions")}</span><span class="tv">${ign ?? "—"}</span></div>` : ""}
+        <ha-icon icon="mdi:fire-circle" style="color:#f06b21"></ha-icon><span class="tl">${this._t("ignitions")}</span><span class="tv">${eccE(ign ?? "—")}</span></div>` : ""}
       ${this._resolved.alarm ? tile(al ? "mdi:alert" : "mdi:check-circle", this._t("alarm_now"), al ? (lab || this._t("alarm")) : this._t("none"), al ? "#e53935" : "#2ea55f", this._resolved.alarm_label || this._resolved.alarm) : ""}
       ${this._resolved.pellet || this._resolved.res_hours ? this._pelletTile(low) : ""}
     </div>`;
@@ -873,7 +880,7 @@ class EdilkaminControlCard extends HTMLElement {
         <table class="igt"><thead><tr><th>${this._t("ign_on")}</th><th>${this._t("ign_off")}</th><th>${this._t("duration")}</th></tr></thead><tbody>${g.rows.join("")}</tbody></table>`;
     }
     const foot = days.size ? `<div class="igsum"><span>${this._t("total")}</span><b>${dur(tot)}</b><span>${this._t("average")}</span><b>${dur(n ? Math.round(tot / n) : 0)}</b>
-      ${cnt !== undefined ? `<span>${this._t("counter")}</span><b>${cnt}</b>` : ""}</div>` : "";
+      ${cnt !== undefined ? `<span>${this._t("counter")}</span><b>${eccE(cnt)}</b>` : ""}</div>` : "";
     return `<div class="mhead"><ha-icon icon="mdi:fire-circle" class="hicon"></ha-icon><b>${this._t("ign_title")}</b>${close}</div>${body}${foot}`;
   }
 
@@ -894,9 +901,9 @@ class EdilkaminControlCard extends HTMLElement {
     if (r.res_alert) {
       const a = st("res_alert");
       row("mdi:timer-alert-outline", this._t("alert_after"), "", `<div class="pc">
-        <button class="round sm" data-act="num-" data-entity="${r.res_alert}"><ha-icon icon="mdi:minus"></ha-icon></button>
+        <button class="round sm" data-act="num-" data-entity="${eccE(r.res_alert)}"><ha-icon icon="mdi:minus"></ha-icon></button>
         <span>${a ? (Number(a.state) ? this._fmt(a.state) + " h" : "—") : "—"}</span>
-        <button class="round sm" data-act="num+" data-entity="${r.res_alert}"><ha-icon icon="mdi:plus"></ha-icon></button></div>`);
+        <button class="round sm" data-act="num+" data-entity="${eccE(r.res_alert)}"><ha-icon icon="mdi:plus"></ha-icon></button></div>`);
     }
     if (r.pellet) row("mdi:grain", this._t("stove_reserve"), this._v("pellet") === "Empty" ? `<span class="red">${this._t("reserve_low")}</span>` : this._t("ok"));
     if (stockS) {

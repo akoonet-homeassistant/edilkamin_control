@@ -1184,6 +1184,11 @@ class EdilkaminController:
         if not topic or "mqtt" not in self.hass.config.components:
             return
         payload = json.dumps(self.schedule_payload(), separators=(",", ":"))
+        if self.observe:
+            # Mode observation : rien n'est envoyé à l'ESP32, pas même le planning de secours
+            self._log(f"Observation : planning de secours non publié sur {topic} "
+                      f"({sum(1 for p in self.profiles if p[F_ACTIVE])} plage(s) active(s))", self.ent(CONF_CLIMATE))
+            return
         try:
             await self.hass.services.async_call(
                 "mqtt", "publish", {"topic": topic, "payload": payload, "qos": 1, "retain": True}, blocking=True)
