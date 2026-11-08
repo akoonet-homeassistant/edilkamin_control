@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "edilkamin_control"
-VERSION = "2026.11.12"
+VERSION = "2026.11.13"
 
 # Clés de configuration (entrée de configuration / options)
 CONF_CLIMATE = "climate"
@@ -22,6 +22,9 @@ CONF_IGNITIONS = "ignitions"
 CONF_IGNITION_LOG = "ignition_log"  # input_text « jj/mm hh:mm;… » d'une automatisation existante
 CONF_STOP_LOG = "stop_log"
 CONF_FIRMWARE_URL = "firmware_url"  # manifeste JSON du firmware ESP32 (mise à jour à distance)
+CONF_WINDOWS = "windows"  # fenêtres et portes surveillées (binary_sensor)
+CONF_WINDOW_OPEN_DELAY = "window_open_delay"  # min d'ouverture avant de couper le poêle (0 à 60)
+CONF_WINDOW_CLOSE_DELAY = "window_close_delay"  # min après la fermeture avant de reprendre (0 à 60)
 FIRMWARE_MANIFEST_URL = "https://akoonet-homeassistant.github.io/edilkamin_control/webflash/ota.json"
 
 # Entités du firmware recherchées sur le même appareil que le thermostat
@@ -71,6 +74,8 @@ K_FORCED = "forced"
 K_PRESENCE = "presence"
 K_ESP_BACK = "esp_back"
 K_MANUAL_END = "manual_end"
+K_WINDOW = "window"  # fenêtre ouverte : poêle coupé
+K_WINDOW_END = "window_end"  # fenêtres refermées : reprise
 FULL_RESEND = (K_ESP_BACK, K_PLANNING_ON)
 
 # Champs d'une programmation

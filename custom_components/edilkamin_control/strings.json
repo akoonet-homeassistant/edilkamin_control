@@ -26,7 +26,10 @@
           "ignitions": "Stove ignition counter",
           "ignition_log": "Existing ignition history (input_text)",
           "stop_log": "Existing stop history (input_text)",
-          "firmware_url": "ESP32 firmware manifest (remote update)"
+          "firmware_url": "ESP32 firmware manifest (remote update)",
+          "windows": "Watched windows and doors",
+          "window_open_delay": "Delay before cut-off (window open)",
+          "window_close_delay": "Delay before resuming (windows closed)"
         },
         "data_description": {
           "presence": "Empty house: alarm armed away or vacation, person away, empty zone, switch off. Used by each schedule's “If away” setting.",
@@ -34,7 +37,10 @@
           "schedule_format": "v1 for the akoonet-13 firmware (5 slots, no days or silent mode).",
           "observe": "To run the integration next to existing automations: commands are only written to the logbook.",
           "ignition_log": "« dd/mm hh:mm ; … » list kept by an automation, newest first: imported into the card's Ignitions button.",
-          "firmware_url": "Empty = project install page on GitHub. Can point to an ota.json file served by Home Assistant (/local/…) or another server."
+          "firmware_url": "Empty = project install page on GitHub. Can point to an ota.json file served by Home Assistant (/local/…) or another server.",
+          "windows": "An open window turns the stove off if it is on and keeps the schedule from turning it on. The schedule resumes once they are all closed.",
+          "window_open_delay": "How long a window must stay open before the stove is turned off (0 = right away). Shorter airing does nothing.",
+          "window_close_delay": "Time after the last window is closed before the schedule resumes (0 = right away)."
         }
       }
     },
@@ -61,7 +67,10 @@
           "ignitions": "Stove ignition counter",
           "ignition_log": "Existing ignition history (input_text)",
           "stop_log": "Existing stop history (input_text)",
-          "firmware_url": "ESP32 firmware manifest (remote update)"
+          "firmware_url": "ESP32 firmware manifest (remote update)",
+          "windows": "Watched windows and doors",
+          "window_open_delay": "Delay before cut-off (window open)",
+          "window_close_delay": "Delay before resuming (windows closed)"
         },
         "data_description": {
           "presence": "Empty house: alarm armed away or vacation, person away, empty zone, switch off. Used by each schedule's “If away” setting.",
@@ -69,7 +78,10 @@
           "schedule_format": "v1 for the akoonet-13 firmware (5 slots, no days or silent mode).",
           "observe": "To run the integration next to existing automations: commands are only written to the logbook.",
           "ignition_log": "« dd/mm hh:mm ; … » list kept by an automation, newest first: imported into the card's Ignitions button.",
-          "firmware_url": "Empty = project install page on GitHub. Can point to an ota.json file served by Home Assistant (/local/…) or another server."
+          "firmware_url": "Empty = project install page on GitHub. Can point to an ota.json file served by Home Assistant (/local/…) or another server.",
+          "windows": "An open window turns the stove off if it is on and keeps the schedule from turning it on. The schedule resumes once they are all closed.",
+          "window_open_delay": "How long a window must stay open before the stove is turned off (0 = right away). Shorter airing does nothing.",
+          "window_close_delay": "Time after the last window is closed before the schedule resumes (0 = right away)."
         }
       }
     }
@@ -191,6 +203,9 @@
     "binary_sensor": {
       "reservoir_low": {
         "name": "Hopper almost empty"
+      },
+      "window_cut": {
+        "name": "Open window cut-off"
       }
     },
     "button": {

@@ -28,6 +28,10 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 - **Silence manuel** : Relax activé à la main est prioritaire jusqu'à minuit.
 - **Programmation forcée** : une programmation appliquée tout de suite, jusqu'au prochain début ou fin de plage.
 - **Si absent** : avec une entité de présence (alarme, personne, zone, interrupteur…), chaque programmation peut être remplacée par une autre quand la maison est vide.
+- **Fenêtres ouvertes** : quand une fenêtre ou une porte surveillée reste ouverte plus longtemps que le délai avant coupure (0 à 60 min), le poêle est coupé s'il est allumé et la programmation ne l'allume plus. Une fois toutes les fenêtres refermées, la programmation reprend après le délai avant reprise (0 à 60 min). Si la programmation est désactivée, le poêle est rallumé s'il l'était avant. Rallumer le poêle à la main fenêtre ouverte lève la coupure jusqu'à la fermeture. La carte affiche un bandeau pendant l'attente et la coupure. Si Home Assistant est arrêté pendant la coupure, le planning de secours de l'ESP32 peut rallumer le poêle.
+
+  ![Fenêtres ouvertes](docs/screenshots/fenetres_ouvertes.png)
+
 - **Vérification** : 4 minutes après un changement de plage, ce que le poêle renvoie est comparé à la programmation et les ordres perdus sont renvoyés une fois (inscrit dans le journal). Après chaque ordre d'allumage de la programmation, si le poêle est toujours à l'arrêt 4 minutes plus tard (et sous la consigne en Stand-by), l'ordre est renvoyé, 2 fois au plus.
 - **Retour de l'ESP32** : si un changement a eu lieu pendant une coupure, tout est renvoyé 1 minute après son retour.
 - **Planning de secours** : publié en MQTT (message retenu) à chaque modification.
@@ -103,6 +107,10 @@ Si vous aviez ajouté le dépôt dans les **Dépôts personnalisés** de HACS, v
 
      ![Options de l'historique](docs/screenshots/options_historique.png)
    - **Présence** : maison vide si l'alarme est en mode absence ou vacances, la personne absente, la zone vide ou l'interrupteur coupé.
+   - **Fenêtres et portes surveillées** (facultatif, capteurs binaires de type fenêtre, porte, ouverture ou porte de garage), **délai avant coupure** et **délai avant reprise** (0 à 60 min chacun).
+
+     ![Options des fenêtres](docs/screenshots/options_fenetres.png)
+
    - **Sujet MQTT du planning de secours** : proposé d'après l'identifiant de l'ESP32 (`edilkamin/<id>/schedule`). Vide = pas d'envoi.
    - **Manifeste du firmware ESP32** (facultatif) : adresse du fichier `ota.json` de la mise à jour à distance. Vide = page d'installation du projet ; peut pointer vers Home Assistant (`/local/…`) ou un autre serveur.
    - **Format du planning de secours** : `v2` (jusqu'à 10 plages, jours et silence, firmware 2026.11.1 ou plus récent) ou `v1` pour le firmware akoonet-13 (5 plages).
@@ -187,6 +195,7 @@ Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
 | `sensor.poele_autonomie_du_stock` | Heures de chauffe permises par le stock (Suivi Stock Pellet) |
 | `number.poele_seuil_d_alerte_du_reservoir` | Seuil en heures (0 = désactivé) |
 | `binary_sensor.poele_reservoir_bientot_vide` | Seuil dépassé |
+| `binary_sensor.poele_coupure_fenetre_ouverte` | Poêle coupé par une fenêtre ouverte (attributs `open_windows`, `since`, `cut_at`, `resume_at`, `was_on`, `manual_override`). Créé seulement si des fenêtres sont choisies dans les options |
 | `button.poele_reservoir_rempli` | Remet le compteur du réservoir à zéro |
 
 **Par programmation** (exemple « Soirée », attribut `profile` = position dans la liste)
@@ -246,6 +255,10 @@ It does not touch the stove itself: everything goes through the entities publish
 - **Manual silent mode**: Relax turned on by hand has priority until midnight.
 - **Forced schedule**: one schedule applied right away, until the next slot start or end.
 - **If away**: with a presence entity (alarm, person, zone, switch…), each schedule can be replaced by another one when the house is empty.
+- **Open windows**: when a watched window or door stays open longer than the delay before cut-off (0 to 60 min), the stove is turned off if it is on and the schedule no longer turns it on. Once all windows are closed, the schedule resumes after the delay before resuming (0 to 60 min). When the schedule is disabled, the stove is turned back on if it was on before. Turning the stove on by hand with a window open lifts the cut-off until the windows are closed. The card shows a banner while waiting and during the cut-off. If Home Assistant is down during the cut-off, the ESP32 fallback schedule may turn the stove back on.
+
+  ![Open windows](docs/screenshots/fenetres_ouvertes.png)
+
 - **Check**: 4 minutes after a slot change, what the stove reports is compared with the schedule and lost commands are sent once more (written to the logbook). After each ignition order from the schedule, if the stove is still off 4 minutes later (and below the setpoint in Standby), the order is sent again, at most twice.
 - **ESP32 back online**: if something changed during an outage, everything is sent again 1 minute after it comes back.
 - **Fallback schedule**: published over MQTT (retained) on every change.
@@ -315,6 +328,10 @@ If you had added the repository to HACS **Custom repositories**, you can remove 
    - **Stove ignition counter**: found automatically; used for the ignition history.
    - **Existing ignition / stop history** (`input_text`, optional): « dd/mm hh:mm » lists kept by an automation, newest first (« - » = running, « ? » = missed stop). Found automatically (`input_text.poele_…allumages` and `…arrets`); they feed the Ignitions tile as soon as the integration is installed.
    - **Presence**: empty house when the alarm is armed away or vacation, the person is away, the zone is empty or the switch is off.
+   - **Watched windows and doors** (optional, binary sensors of the window, door, opening or garage door type), **delay before cut-off** and **delay before resuming** (0 to 60 min each).
+
+     ![Window options](docs/screenshots/options_fenetres.png)
+
    - **Fallback schedule MQTT topic**: suggested from the ESP32 identifier (`edilkamin/<id>/schedule`). Empty = nothing sent.
    - **ESP32 firmware manifest** (optional): address of the remote update `ota.json` file. Empty = project install page; can point to Home Assistant (`/local/…`) or another server.
    - **Fallback schedule format**: `v2` (up to 10 slots, days and silent mode, firmware 2026.11.1 or newer) or `v1` for the akoonet-13 firmware (5 slots).
@@ -380,6 +397,7 @@ The entity IDs depend on the entry name and on the Home Assistant language (show
 | `sensor.stove_stock_autonomy` | Burn hours allowed by the stock (Suivi Stock Pellet) |
 | `number.stove_hopper_alert_threshold` | Threshold in hours (0 = off) |
 | `binary_sensor.stove_hopper_almost_empty` | Threshold exceeded |
+| `binary_sensor.stove_open_window_cut_off` | Stove turned off by an open window (attributes `open_windows`, `since`, `cut_at`, `resume_at`, `was_on`, `manual_override`). Created only when windows are chosen in the options |
 | `button.stove_hopper_refilled` | Resets the hopper counter |
 
 **Per schedule** (example “Evening”, attribute `profile` = position in the list)

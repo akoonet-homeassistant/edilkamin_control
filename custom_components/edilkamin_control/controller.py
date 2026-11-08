@@ -41,6 +41,9 @@ from .const import (
     CONF_IGNITION_LOG,
     CONF_IGNITIONS,
     CONF_STOP_LOG,
+    CONF_WINDOW_CLOSE_DELAY,
+    CONF_WINDOW_OPEN_DELAY,
+    CONF_WINDOWS,
     HISTORY_DAYS,
     CONF_MQTT_TOPIC,
     CONF_OBSERVE,
@@ -71,6 +74,8 @@ from .const import (
     K_ESP_BACK,
     K_FORCED,
     K_MANUAL_END,
+    K_WINDOW,
+    K_WINDOW_END,
     K_OVERRIDE_CANCEL,
     K_PLANNING_ON,
     K_PRESENCE,
@@ -155,6 +160,10 @@ class EdilkaminController:
         self._esp_unsub = None
         self._ignite_unsub = None
         self._ignite_tries = 0
+        self._win_open_unsub = None   # coupure en attente (fenêtre ouverte depuis moins que le délai)
+        self._win_close_unsub = None  # reprise en attente (fenêtres refermées depuis moins que le délai)
+        self.window_cut_at: datetime | None = None
+        self.window_resume_at: datetime | None = None
         self.esp_back_at: datetime | None = None
         self._sched_unsub = None
         self._save_unsub = None
@@ -201,6 +210,10 @@ class EdilkaminController:
             "current": None,
             "substitution": False,
             "alert_threshold": 0.0,
+            "window": False,           # fenêtre ouverte : poêle coupé, programmation suspendue
+            "window_heat": False,      # le poêle était allumé au moment de la coupure
+            "window_override": False,  # rallumé à la main fenêtre ouverte : pas de nouvelle coupure avant fermeture
+            "window_since": None,
             **data.get("state", {}),
         }
         self.ignitions = list(data.get("ignitions") or [])
@@ -351,6 +364,8 @@ class EdilkaminController:
             self._update_occupied(hass.states.get(self.ent(CONF_PRESENCE)), initial=True)
             self._unsubs.append(async_track_state_change_event(hass, [self.ent(CONF_PRESENCE)], self._on_presence))
         self._setup_pellet()
+        if self.windows():
+            self._unsubs.append(async_track_state_change_event(hass, self.windows(), self._on_window_event))
         self._unsubs.append(async_track_time_change(hass, self._on_midnight, hour=0, minute=0, second=0))
         self._unsubs.append(async_track_time_interval(hass, self._on_tick, timedelta(minutes=5)))
         # Réservoir : reprendre le compteur selon l'état actuel
@@ -360,6 +375,7 @@ class EdilkaminController:
             self._import_legacy_reservoir()
             self.schedule_next_slot()
             self.schedule_publish(0)
+            self._windows_changed()
             await self.async_apply(K_START)
 
         if hass.state is CoreState.running:
@@ -380,7 +396,8 @@ class EdilkaminController:
         for u in self._unsubs:
             u()
         self._unsubs.clear()
-        for name in ("_slot_unsub", "_verify_unsub", "_esp_unsub", "_sched_unsub", "_ignite_unsub"):
+        for name in ("_slot_unsub", "_verify_unsub", "_esp_unsub", "_sched_unsub", "_ignite_unsub",
+                     "_win_open_unsub", "_win_close_unsub"):
             u = getattr(self, name)
             if u:
                 u()
@@ -501,6 +518,7 @@ class EdilkaminController:
             or forcer
             or on_c != on_p
             or (kind == K_ESP_BACK and on_c != heat)
+            or (kind == K_WINDOW_END and on_c != heat)
             or (kind in (K_SLOT, K_MANUAL_END) and on_c and status == STATUS_OFF
                 and (mode_p != MODE_STANDBY or temp < cons))
         )
@@ -509,6 +527,14 @@ class EdilkaminController:
         # passage hors programmation ou consigne de la programmation en cours modifiée)
         fin_derog = derog and (complet or forcer or not on_c or slot_change or c != prec
                                or (edit_cible and edit is not None and edit[1] == F_SETPOINT))
+
+        # Fenêtre ouverte : poêle coupé, rien d'autre n'est envoyé jusqu'à la reprise
+        if st["window"]:
+            st["substitution"] = subst
+            self._set_current(c)
+            if heat:
+                await self._svc("climate", "set_hvac_mode", {"entity_id": self.ent(CONF_CLIMATE), "hvac_mode": "off"})
+            return
 
         # Programmation désactivée sans forçage : affichage du profil seulement
         if not planif and not forced:
@@ -608,7 +634,7 @@ class EdilkaminController:
     async def _on_ignite_check(self, _now: datetime) -> None:
         self._ignite_unsub = None
         st = self.state
-        if not st["planning"] or st["manual"] or not self.esp_available():
+        if not st["planning"] or st["manual"] or st["window"] or not self.esp_available():
             return
         async with self._lock:
             cp = self.by_id(st["current"])
@@ -641,7 +667,7 @@ class EdilkaminController:
         self._verify_unsub = None
         kind = self._verify_kind
         st = self.state
-        if not st["planning"] or st["forced"] or st["override"] or not self.esp_available():
+        if not st["planning"] or st["forced"] or st["override"] or st["window"] or not self.esp_available():
             return
         async with self._lock:
             self.last_verify = dt_util.utcnow()
@@ -703,6 +729,9 @@ class EdilkaminController:
             self._on_status(old, new)
         if self.ignitions_entity and eid == self.ignitions_entity:
             self._on_ignition_counter(old, new)
+        if (eid == self.ent(CONF_CLIMATE) and self.state["window"] and old is not None
+                and old.state == "off" and new.state == "heat" and new.context and new.context.user_id):
+            self._window_override()
         if eid == self.ent(CONF_CLIMATE):
             if old is not None and old.attributes.get("temperature") != new.attributes.get("temperature"):
                 self._detect_override(old, new)
@@ -1006,6 +1035,111 @@ class EdilkaminController:
         if self.state["relax_manual"]:
             self.state["relax_manual"] = False
             await self.async_apply(K_RELAX_END)
+
+    # ------------------------------------------------------------------ fenêtres ouvertes
+    def windows(self) -> list[str]:
+        return [e for e in (self.cfg.get(CONF_WINDOWS) or []) if e]
+
+    def open_windows(self) -> list[str]:
+        return [e for e in self.windows() if (s := self.hass.states.get(e)) is not None and s.state == "on"]
+
+    def window_names(self, ids: list[str]) -> list[str]:
+        return [((s.attributes.get("friendly_name") if (s := self.hass.states.get(e)) else None) or e) for e in ids]
+
+    def _window_delay(self, key: str) -> float:
+        try:
+            return max(0.0, min(60.0, float(self.cfg.get(key) or 0))) * 60
+        except (TypeError, ValueError):
+            return 0.0
+
+    @callback
+    def _on_window_event(self, _event: Event) -> None:
+        self._windows_changed()
+
+    @callback
+    def _windows_changed(self) -> None:
+        """Ouverture : coupure après le délai. Toutes fermées : reprise après le délai."""
+        st = self.state
+        if self.open_windows():
+            if self._win_close_unsub:
+                self._win_close_unsub()
+                self._win_close_unsub = None
+                self.window_resume_at = None
+            if not st["window"] and not st["window_override"] and self._win_open_unsub is None:
+                d = self._window_delay(CONF_WINDOW_OPEN_DELAY)
+                self.window_cut_at = dt_util.utcnow() + timedelta(seconds=d)
+                self._win_open_unsub = async_call_later(self.hass, d, self._on_window_cut)
+        else:
+            if self._win_open_unsub:
+                self._win_open_unsub()
+                self._win_open_unsub = None
+                self.window_cut_at = None
+            if st["window_override"]:
+                st["window_override"] = False
+                self.async_save()
+            if st["window"] and self._win_close_unsub is None:
+                d = self._window_delay(CONF_WINDOW_CLOSE_DELAY)
+                self.window_resume_at = dt_util.utcnow() + timedelta(seconds=d)
+                self._win_close_unsub = async_call_later(self.hass, d, self._on_window_resume)
+        self.notify()
+
+    async def _on_window_cut(self, _now: datetime | None = None) -> None:
+        self._win_open_unsub = None
+        self.window_cut_at = None
+        st = self.state
+        opened = self.open_windows()
+        if not opened or st["window"] or st["window_override"]:
+            return
+        lit = self.climate_heat() or self.status() not in STATUS_NOT_BURNING
+        st["window"] = True
+        st["window_heat"] = lit
+        st["window_since"] = dt_util.utcnow().isoformat()
+        if self._ignite_unsub:
+            self._ignite_unsub()
+            self._ignite_unsub = None
+        self._log(f"Fenêtre ouverte ({', '.join(self.window_names(opened))}) : "
+                  + ("poêle coupé, la programmation reprendra à la fermeture." if lit
+                     else "le poêle est à l'arrêt, la programmation ne l'allumera pas tant qu'elle est ouverte."),
+                  self.ent(CONF_CLIMATE))
+        await self.async_apply(K_WINDOW)
+
+    async def _on_window_resume(self, _now: datetime | None = None) -> None:
+        self._win_close_unsub = None
+        self.window_resume_at = None
+        st = self.state
+        if self.open_windows() or not st["window"]:
+            return
+        st["window"] = False
+        was = st["window_heat"]
+        st["window_heat"] = False
+        st["window_since"] = None
+        if st["planning"] or st["forced"]:
+            self._log("Fenêtres fermées : reprise de la programmation.", self.ent(CONF_CLIMATE))
+            await self.async_apply(K_WINDOW_END)
+            self.schedule_verify(K_SLOT)
+        else:
+            if was:
+                self._log("Fenêtres fermées : poêle rallumé (il était allumé avant l'ouverture).", self.ent(CONF_CLIMATE))
+                await self._svc("climate", "set_hvac_mode", {"entity_id": self.ent(CONF_CLIMATE), "hvac_mode": "heat"})
+            self.async_save()
+            self.notify()
+
+    @callback
+    def _window_override(self) -> None:
+        """Poêle rallumé à la main fenêtre ouverte : la coupure est levée jusqu'à la fermeture."""
+        st = self.state
+        st["window"] = False
+        st["window_heat"] = False
+        st["window_since"] = None
+        st["window_override"] = True
+        if self._win_close_unsub:
+            self._win_close_unsub()
+            self._win_close_unsub = None
+            self.window_resume_at = None
+        self._log("Poêle rallumé à la main fenêtre ouverte : pas de nouvelle coupure avant la fermeture des fenêtres.",
+                  self.ent(CONF_CLIMATE))
+        self.async_save()
+        self.notify()
 
     # ------------------------------------------------------------------ présence
     def _update_occupied(self, s: State | None, initial: bool = False) -> bool:

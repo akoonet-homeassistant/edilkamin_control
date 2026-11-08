@@ -26,7 +26,10 @@
           "ignitions": "Compteur d'allumages du poêle",
           "ignition_log": "Historique des allumages existant (input_text)",
           "stop_log": "Historique des arrêts existant (input_text)",
-          "firmware_url": "Manifeste du firmware ESP32 (mise à jour à distance)"
+          "firmware_url": "Manifeste du firmware ESP32 (mise à jour à distance)",
+          "windows": "Fenêtres et portes surveillées",
+          "window_open_delay": "Délai avant coupure (fenêtre ouverte)",
+          "window_close_delay": "Délai avant reprise (fenêtres fermées)"
         },
         "data_description": {
           "presence": "Maison vide : alarme en mode absence ou vacances, personne absente, zone vide, interrupteur coupé. Sert au réglage « Si absent » de chaque programmation.",
@@ -34,7 +37,10 @@
           "schedule_format": "v1 pour le firmware akoonet-13 (5 plages, sans jours ni silence).",
           "observe": "Pour faire tourner l'intégration à côté d'automatisations existantes : les ordres sont seulement inscrits dans le journal.",
           "ignition_log": "Liste « jj/mm hh:mm ; … » tenue par une automatisation, la plus récente en premier : reprise dans le bouton Allumages de la carte.",
-          "firmware_url": "Vide = page d'installation du projet sur GitHub. Peut pointer vers un fichier ota.json servi par Home Assistant (/local/…) ou un autre serveur."
+          "firmware_url": "Vide = page d'installation du projet sur GitHub. Peut pointer vers un fichier ota.json servi par Home Assistant (/local/…) ou un autre serveur.",
+          "windows": "Une fenêtre ouverte coupe le poêle s'il est allumé et empêche la programmation de l'allumer. La programmation reprend quand toutes sont refermées.",
+          "window_open_delay": "Temps pendant lequel une fenêtre doit rester ouverte avant que le poêle soit coupé (0 = aussitôt). Une aération plus courte ne coupe rien.",
+          "window_close_delay": "Temps après la fermeture de la dernière fenêtre avant de reprendre la programmation (0 = aussitôt)."
         }
       }
     },
@@ -61,7 +67,10 @@
           "ignitions": "Compteur d'allumages du poêle",
           "ignition_log": "Historique des allumages existant (input_text)",
           "stop_log": "Historique des arrêts existant (input_text)",
-          "firmware_url": "Manifeste du firmware ESP32 (mise à jour à distance)"
+          "firmware_url": "Manifeste du firmware ESP32 (mise à jour à distance)",
+          "windows": "Fenêtres et portes surveillées",
+          "window_open_delay": "Délai avant coupure (fenêtre ouverte)",
+          "window_close_delay": "Délai avant reprise (fenêtres fermées)"
         },
         "data_description": {
           "presence": "Maison vide : alarme en mode absence ou vacances, personne absente, zone vide, interrupteur coupé. Sert au réglage « Si absent » de chaque programmation.",
@@ -69,7 +78,10 @@
           "schedule_format": "v1 pour le firmware akoonet-13 (5 plages, sans jours ni silence).",
           "observe": "Pour faire tourner l'intégration à côté d'automatisations existantes : les ordres sont seulement inscrits dans le journal.",
           "ignition_log": "Liste « jj/mm hh:mm ; … » tenue par une automatisation, la plus récente en premier : reprise dans le bouton Allumages de la carte.",
-          "firmware_url": "Vide = page d'installation du projet sur GitHub. Peut pointer vers un fichier ota.json servi par Home Assistant (/local/…) ou un autre serveur."
+          "firmware_url": "Vide = page d'installation du projet sur GitHub. Peut pointer vers un fichier ota.json servi par Home Assistant (/local/…) ou un autre serveur.",
+          "windows": "Une fenêtre ouverte coupe le poêle s'il est allumé et empêche la programmation de l'allumer. La programmation reprend quand toutes sont refermées.",
+          "window_open_delay": "Temps pendant lequel une fenêtre doit rester ouverte avant que le poêle soit coupé (0 = aussitôt). Une aération plus courte ne coupe rien.",
+          "window_close_delay": "Temps après la fermeture de la dernière fenêtre avant de reprendre la programmation (0 = aussitôt)."
         }
       }
     }
@@ -191,6 +203,9 @@
     "binary_sensor": {
       "reservoir_low": {
         "name": "Réservoir bientôt vide"
+      },
+      "window_cut": {
+        "name": "Coupure fenêtre ouverte"
       }
     },
     "button": {

@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.12";
+const ECC_VERSION = "2026.11.13";
 
 // Échappement HTML de toute valeur venant de Home Assistant ou de la configuration
 // (noms de programmation, états, options, libellés d'alarme, noms d'entités…)
@@ -25,7 +25,9 @@ const ECC_I18N = {
     no_profile: "Aucun profil", forced: "forcé", automatic: "Automatique",
     override: "Consigne manuelle", override_txt: "maintenue jusqu’au prochain changement de plage",
     manual: "Réglages manuels", manual_txt: "ventilations, puissance, stand-by gardés jusqu’à",
-    next_slot: "la prochaine plage", give_back: "Rendre la main", cancel: "Annuler",
+    next_slot: "la prochaine plage", relax_txt: "silence (Relax) gardé jusqu’à minuit",
+    win_cut: "Fenêtre ouverte : poêle coupé", win_closed: "Fenêtres fermées : poêle coupé", win_wait: "Fenêtre ouverte", win_cut_at: "coupure du poêle à", win_resume_close: "la programmation reprendra à la fermeture",
+    win_resume_at: "reprise de la programmation à", give_back: "Rendre la main", cancel: "Annuler",
     profile: "Profil", mode_run: "Marche", mode_standby: "Stand-by", all_day: "toute la journée",
     tracking: "Suivi", last24: "24 dernières heures", ignitions: "Allumages",
     alarm_now: "Alarme en cours", none: "Aucune", pellets: "Granulés", pellets_ok: "OK", pellets_low: "Réserve",
@@ -57,7 +59,9 @@ const ECC_I18N = {
     no_profile: "No profile", forced: "forced", automatic: "Automatic",
     override: "Manual setpoint", override_txt: "kept until the next slot change",
     manual: "Manual settings", manual_txt: "fans, power, standby kept until",
-    next_slot: "the next slot", give_back: "Give back", cancel: "Cancel",
+    next_slot: "the next slot", relax_txt: "silent mode (Relax) kept until midnight",
+    win_cut: "Window open: stove off", win_closed: "Windows closed: stove off", win_wait: "Window open", win_cut_at: "stove turned off at", win_resume_close: "the schedule resumes once closed",
+    win_resume_at: "schedule resumes at", give_back: "Give back", cancel: "Cancel",
     profile: "Profile", mode_run: "Run", mode_standby: "Standby", all_day: "all day",
     tracking: "Tracking", last24: "Last 24 hours", ignitions: "Ignitions",
     alarm_now: "Current alarm", none: "None", pellets: "Pellets", pellets_ok: "OK", pellets_low: "Low",
@@ -106,6 +110,8 @@ const ECC_PLANNER_KEYS = {
   forced_profile: "forced_profile",   // select : Automatique / Profil 1..n
   override: "override",            // switch : dérogation de consigne (attribut reference)
   manual: "manual_settings",       // switch : réglages manuels (attribut until)
+  relax_prio: "relax_priority",
+  window_cut: "window_cut",        // binary_sensor : fenêtre ouverte, poêle coupé (attributs open_windows, cut_at, resume_at)    // switch : silence (Relax) activé à la main, prioritaire jusqu'à minuit
   res_hours: "reservoir_hours",    // sensor : heures de chauffe depuis le remplissage
   res_avg: "reservoir_average",    // sensor : durée moyenne d'un réservoir (attribut durations)
   res_auto: "reservoir_autonomy",  // sensor : autonomie estimée du réservoir
@@ -417,7 +423,7 @@ class EdilkaminControlCard extends HTMLElement {
   }
 
   _stoveSvg(ph, veille, low) {
-    const k = veille ? 0 : ph === "on" ? 0.75 : ph === "ignition" ? 0.35 : ph === "shutdown" ? 0.3 : 0;
+    const k = veille ? 0 : ph === "on" ? 0.75 : ph === "ignition" ? 0.35 : 0;
     const p = Math.min(5, Math.max(1, Number(this._realPower()) || 1));
     const kk = ph === "on" ? 0.45 + p * 0.11 : k;
     const relax = this._v("relax") === "on";
@@ -485,7 +491,7 @@ class EdilkaminControlCard extends HTMLElement {
     const relax = this._v("relax") === "on";
     const a = this._s("climate")?.attributes || {};
     const alarm = ph === "alarm";
-    const k = veille ? 0 : ph === "on" ? (relax ? 0.55 : 0.45 + p * 0.11) : ph === "ignition" ? 0.35 : ph === "shutdown" ? 0.3 : 0;
+    const k = veille ? 0 : ph === "on" ? (relax ? 0.55 : 0.45 + p * 0.11) : ph === "ignition" ? 0.35 : 0;
     const lit = k > 0;
     const flames = lit ? `
       <rect width="100" height="100" fill="#120804" opacity=".9"/>
@@ -587,18 +593,37 @@ class EdilkaminControlCard extends HTMLElement {
     out.push(`<div class="sec-title">${this._t("planning")}
       ${planning ? `<button class="mini ${planning.state === "on" ? "on" : ""}" data-act="toggle" data-entity="${eccE(r.planning)}">
         <ha-icon icon="${planning.state === "on" ? "mdi:calendar-check" : "mdi:calendar-remove"}"></ha-icon>${this._t(planning.state === "on" ? "planning_on" : "planning_off")}</button>` : ""}</div>`);
+    // Fenêtre ouverte : coupure en attente ou poêle coupé
+    const win = this._s("window_cut");
+    if (win && (win.state === "on" || win.attributes?.cut_at)) {
+      const wa = win.attributes || {};
+      const hm = (iso) => new Date(iso).toLocaleTimeString(this._hass?.locale?.language || "fr", { hour: "2-digit", minute: "2-digit" });
+      const names = (wa.open_windows || []).join(", ");
+      const cut = win.state === "on";
+      const line = cut ? (wa.resume_at ? `${this._t("win_resume_at")} ${hm(wa.resume_at)}` : this._t("win_resume_close"))
+        : `${this._t("win_cut_at")} ${hm(wa.cut_at)}`;
+      out.push(`<div class="banner"><ha-icon icon="mdi:window-open-variant"></ha-icon>
+        <div><b>${this._t(!cut ? "win_wait" : wa.resume_at ? "win_closed" : "win_cut")}</b><br><span>${names ? eccE(names) + " · " : ""}${eccE(line)}</span></div>
+        <button data-act="more" data-entity="${eccE(r.window_cut)}"><ha-icon icon="mdi:information-outline"></ha-icon></button></div>`);
+    }
     const ov = this._s("override");
     if (ov?.state === "on") {
       out.push(`<div class="banner"><ha-icon icon="mdi:hand-back-right"></ha-icon>
         <div><b>${this._t("override")} ${this._fmt(this._s("climate")?.attributes?.temperature)} °C</b><br><span>${this._t("override_txt")}${this._nextSlot() ? " (" + eccE(this._nextSlot()) + ")" : ""}</span></div>
         <button data-act="off" data-entity="${eccE(r.override)}">${this._t("cancel")}</button></div>`);
     }
-    const man = this._s("manual");
-    if (man?.state === "on") {
+    // Réglages manuels : ventilations, puissance, stand-by (jusqu'à la prochaine plage)
+    // et silence (Relax) activé à la main (jusqu'à minuit), dans le même bandeau
+    const manOn = this._s("manual")?.state === "on", rxOn = this._s("relax_prio")?.state === "on";
+    if (manOn || rxOn) {
       const nx = this._nextSlot();
-      out.push(`<div class="banner"><ha-icon icon="mdi:hand-back-right-outline"></ha-icon>
-        <div><b>${this._t("manual")}</b><br><span>${this._t("manual_txt")} ${eccE(nx || this._t("next_slot"))}</span></div>
-        <button data-act="off" data-entity="${eccE(r.manual)}">${this._t("give_back")}</button></div>`);
+      const lines = [];
+      if (manOn) lines.push(`${this._t("manual_txt")} ${eccE(nx || this._t("next_slot"))}`);
+      if (rxOn) lines.push(this._t("relax_txt"));
+      const ents = [manOn ? r.manual : null, rxOn ? r.relax_prio : null].filter(Boolean).join(",");
+      out.push(`<div class="banner"><ha-icon icon="${manOn ? "mdi:hand-back-right-outline" : "mdi:volume-off"}"></ha-icon>
+        <div><b>${this._t("manual")}</b><br><span>${lines.join("<br>")}</span></div>
+        <button data-act="off" data-entity="${eccE(ents)}">${this._t("give_back")}</button></div>`);
     }
     const cur = this._v("current_profile");
     out.push(`<div class="profiles">${r.profiles.map((p) => this._profileRow(p, cur)).join("")}</div>
@@ -1009,7 +1034,7 @@ class EdilkaminControlCard extends HTMLElement {
       case "fan1": this._call("climate", "set_fan_mode", { entity_id: clim, fan_mode: val }); break;
       case "fan2": this._call("select", "select_option", { entity_id: this._resolved.fan2, option: val }); break;
       case "toggle": this._call("homeassistant", "toggle", { entity_id: ent }); break;
-      case "off": this._call("homeassistant", "turn_off", { entity_id: ent }); break;
+      case "off": this._call("homeassistant", "turn_off", { entity_id: ent.split(",") }); break;
       case "num-": case "num+": {
         const s = this._hass.states[ent]; if (!s) break;
         const st = Number(s.attributes.step) || 0.5;
