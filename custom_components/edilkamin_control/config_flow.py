@@ -31,6 +31,7 @@ from .const import (
     CONF_SCHEDULE_FORMAT,
     CONF_STANDBY,
     CONF_STATUS,
+    ALARM_SUFFIXES,
     DEVICE_SUFFIXES,
     DOMAIN,
 )
@@ -54,6 +55,20 @@ def detect_siblings(hass: HomeAssistant, climate: str) -> dict[str, str]:
                 found[key] = eid
                 break
     return found
+
+
+def detect_alarm(hass: HomeAssistant, climate: str | None) -> tuple[str | None, str | None]:
+    """Alarme du firmware (binary_sensor) et son libellé (sensor), sur l'appareil du thermostat."""
+    reg = er.async_get(hass)
+    ent = reg.async_get(climate) if climate else None
+    if ent is None or ent.device_id is None:
+        return None, None
+    siblings = [e.entity_id for e in er.async_entries_for_device(reg, ent.device_id)]
+    out = []
+    for key in ("alarm", "alarm_label"):
+        domain, suffixes = ALARM_SUFFIXES[key]
+        out.append(next((e for e in siblings if e.startswith(domain + ".") and any(e.endswith(x) for x in suffixes)), None))
+    return out[0], out[1]
 
 
 def detect_logs(hass: HomeAssistant) -> dict[str, str]:

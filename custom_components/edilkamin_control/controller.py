@@ -89,6 +89,7 @@ from .const import (
     SCHEDULE_DEBOUNCE,
     SIGNAL_UPDATE,
     STATUS_NOT_BURNING,
+    ALARM_HISTORY,
     STATUS_OFF,
     STATUS_OK,
     STATUS_STOPPING,
@@ -151,6 +152,9 @@ class EdilkaminController:
         self.reservoir: dict[str, Any] = {}
         self.ignitions: list[dict[str, Any]] = []
         self.ignitions_entity: str | None = None
+        self.alarms: list[dict[str, Any]] = []  # 10 dernières alarmes, la plus récente en premier
+        self.alarm_entity: str | None = None
+        self.alarm_label_entity: str | None = None
         self.legacy_logs: tuple[str | None, str | None] = (None, None)
         self._lock = asyncio.Lock()
         self._unsubs: list = []
@@ -217,6 +221,7 @@ class EdilkaminController:
             **data.get("state", {}),
         }
         self.ignitions = list(data.get("ignitions") or [])
+        self.alarms = list(data.get("alarms") or [])[:ALARM_HISTORY]
         self.reservoir = {"hours": 0.0, "since": None, "durations": [], "last_load": None, "alerted": False,
                           **data.get("reservoir", {})}
         for p in self.profiles:
@@ -264,7 +269,7 @@ class EdilkaminController:
     def async_save(self) -> None:
         """Enregistrement différé (regroupe les écritures)."""
         self._store.async_delay_save(
-            lambda: {"profiles": self.profiles, "state": self.state, "reservoir": self.reservoir, "ignitions": self.ignitions}, 2
+            lambda: {"profiles": self.profiles, "state": self.state, "reservoir": self.reservoir, "ignitions": self.ignitions, "alarms": self.alarms}, 2
         )
 
     @callback
@@ -345,8 +350,17 @@ class EdilkaminController:
             from .config_flow import detect_siblings  # noqa: PLC0415
 
             self.ignitions_entity = detect_siblings(hass, self.ent(CONF_CLIMATE)).get(CONF_IGNITIONS)
+        # Alarme du firmware (état et libellé), trouvée sur l'appareil du thermostat
+        from .config_flow import detect_alarm  # noqa: PLC0415
+
+        self.alarm_entity, self.alarm_label_entity = detect_alarm(hass, self.ent(CONF_CLIMATE))
+        # Alarme terminée pendant l'arrêt de Home Assistant : l'alarme ouverte est fermée
+        st_al = hass.states.get(self.alarm_entity) if self.alarm_entity else None
+        if st_al is not None and st_al.state == "off" and self.alarms and self.alarms[0].get("end") is None:
+            self.alarms[0]["end"] = dt_util.utcnow().isoformat()
         watch = [e for e in (self.ent(CONF_CLIMATE), self.ent(CONF_FAN2), self.ent(CONF_STANDBY),
-                             self.ent(CONF_RELAX), self.ent(CONF_STATUS), self.ignitions_entity) if e]
+                             self.ent(CONF_RELAX), self.ent(CONF_STATUS), self.ignitions_entity,
+                             self.alarm_entity, self.alarm_label_entity) if e]
         self._unsubs.append(async_track_state_change_event(hass, watch, self._on_stove_event))
         # Historique déjà tenu par une automatisation (input_text) : repris et suivi
         from .config_flow import detect_logs  # noqa: PLC0415
@@ -402,7 +416,7 @@ class EdilkaminController:
             if u:
                 u()
             setattr(self, name, None)
-        await self._store.async_save({"profiles": self.profiles, "state": self.state, "reservoir": self.reservoir, "ignitions": self.ignitions})
+        await self._store.async_save({"profiles": self.profiles, "state": self.state, "reservoir": self.reservoir, "ignitions": self.ignitions, "alarms": self.alarms})
 
     # ------------------------------------------------------------------ plages horaires
     def target(self, now: datetime | None = None) -> str | None:
@@ -727,6 +741,8 @@ class EdilkaminController:
             self.esp_back_at = dt_util.utcnow()  # retour de l'ESP32 : valeurs relues, pas des réglages
         if eid == self.ent(CONF_STATUS) or (not self.ent(CONF_STATUS) and eid == self.ent(CONF_CLIMATE)):
             self._on_status(old, new)
+        if self.alarm_entity and eid in (self.alarm_entity, self.alarm_label_entity):
+            self._on_alarm(eid, old, new)
         if self.ignitions_entity and eid == self.ignitions_entity:
             self._on_ignition_counter(old, new)
         if (eid == self.ent(CONF_CLIMATE) and self.state["window"] and old is not None
@@ -901,6 +917,38 @@ class EdilkaminController:
         self._prune_ignitions()
         self.async_save()
         self.notify()
+
+    # ------------------------------------------------------------------ historique des alarmes
+    def _alarm_label(self) -> str | None:
+        s = self.hass.states.get(self.alarm_label_entity) if self.alarm_label_entity else None
+        if s is None or s.state in ("", "Aucune", "None", "none", *STATUS_UNAVAILABLE):
+            return None
+        return s.state
+
+    @callback
+    def _on_alarm(self, eid: str, old: State | None, new: State) -> None:
+        """Début (alarme qui passe à on) et fin (retour à off) ; libellé complété quand il arrive."""
+        now = dt_util.utcnow().isoformat()
+        cur = self.alarms[0] if self.alarms and self.alarms[0].get("end") is None else None
+        changed = False
+        if eid == self.alarm_entity:
+            if new.state == "on" and cur is None and (old is None or old.state != "on"):
+                self.alarms.insert(0, {"start": now, "end": None, "label": self._alarm_label()})
+                self.alarms = self.alarms[:ALARM_HISTORY]
+                changed = True
+            elif new.state == "off" and cur is not None:
+                cur["end"] = now
+                cur["label"] = cur.get("label") or self._alarm_label()
+                changed = True
+        elif cur is not None and not cur.get("label") and self._alarm_label():
+            cur["label"] = self._alarm_label()
+            changed = True
+        if changed:
+            self.async_save()
+            self.notify()
+
+    def alarm_history(self) -> list[dict[str, Any]]:
+        return self.alarms
 
     def ignition_history(self) -> list[dict[str, Any]]:
         self._prune_ignitions()
@@ -1267,7 +1315,7 @@ class EdilkaminController:
         await self._structure_changed()
 
     async def _structure_changed(self) -> None:
-        await self._store.async_save({"profiles": self.profiles, "state": self.state, "reservoir": self.reservoir, "ignitions": self.ignitions})
+        await self._store.async_save({"profiles": self.profiles, "state": self.state, "reservoir": self.reservoir, "ignitions": self.ignitions, "alarms": self.alarms})
         self.hass.config_entries.async_schedule_reload(self.entry.entry_id)
 
     # ------------------------------------------------------------------ planning de secours (ESP32)

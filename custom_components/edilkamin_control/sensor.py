@@ -22,6 +22,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddE
         CurrentProfile(ctl),
         NextChange(ctl),
         IgnitionHistory(ctl),
+        AlarmHistory(ctl),
         HoursSensor(ctl, "reservoir_hours", ctl.reservoir_hours, "mdi:timer-sand", True),
         HoursSensor(ctl, "reservoir_average", ctl.reservoir_average, "mdi:chart-bell-curve"),
         HoursSensor(ctl, "reservoir_autonomy", ctl.reservoir_autonomy, "mdi:gauge"),
@@ -74,6 +75,25 @@ class IgnitionHistory(EdilkaminEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         # copie : un arrêt modifie la liste en place, HA ne verrait aucun changement
         return {"history": deepcopy(self.ctl.ignition_history()), "counter": self.ctl.ignitions_entity}
+
+
+class AlarmHistory(EdilkaminEntity, SensorEntity):
+    """Début de la dernière alarme ; l'attribut history liste les 10 dernières (début, fin, libellé)."""
+
+    _attr_icon = "mdi:alert-circle-outline"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    def __init__(self, ctl) -> None:
+        super().__init__(ctl, "last_alarm")
+
+    @property
+    def native_value(self) -> datetime | None:
+        h = self.ctl.alarm_history()
+        return dt_util.parse_datetime(h[0]["start"]) if h else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"history": deepcopy(self.ctl.alarm_history()), "alarm": self.ctl.alarm_entity}
 
 
 class NextChange(EdilkaminEntity, SensorEntity):

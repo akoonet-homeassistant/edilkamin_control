@@ -200,6 +200,9 @@
       },
       "last_ignition": {
         "name": "Dernier allumage"
+      },
+      "last_alarm": {
+        "name": "Dernière alarme"
       }
     },
     "binary_sensor": {

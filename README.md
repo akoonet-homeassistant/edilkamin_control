@@ -54,6 +54,7 @@ Quand une fenêtre ou une porte surveillée reste ouverte plus longtemps que le 
 - **Réservoir de granulés** : heures de chauffe depuis le remplissage, durée du dernier réservoir, durée moyenne, autonomie estimée, seuil d'alerte, réserve signalée par le poêle. Tout est regroupé dans le menu de la tuile Granulés de la carte. Un suivi déjà tenu par une automatisation est repris une fois au premier démarrage, s'il est trouvé : `sensor.…poele…heures_depuis_remplissage`, `input_text.…poele…durees_reservoirs`, `input_number.…poele…dernier_chargement` et `input_number.…poele…seuil_alerte_reservoir` (la reprise est notée dans le journal).
 - **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (facultatif, s'il est installé) : le bouton « Réservoir rempli » enregistre la consommation dans Suivi Stock Pellet, une consommation saisie dans Suivi Stock Pellet remet le compteur du réservoir à zéro, et l'autonomie du stock est calculée.
 - **Historique des allumages** : les allumages des 3 derniers jours (heure d'allumage, d'arrêt, durée, total et moyenne), d'après le compteur d'allumages du poêle. Affiché par la tuile Allumages de la carte. L'historique déjà tenu par une automatisation (listes « jj/mm hh:mm ; … » en `input_text`) est repris et suivi.
+- **Historique des alarmes** : les 10 dernières alarmes du poêle (libellé, début, fin, durée), enregistrées à partir de l'alarme publiée par l'ESP32. Affiché par la tuile Alarme en cours de la carte. L'historique commence à l'installation de la version 2026.11.18.
 
 ### Prérequis
 
@@ -161,7 +162,7 @@ climate: climate.poele
 
 #### Éditeur
 
-- **Parties affichées** : en haut de l'éditeur, quatre interrupteurs affichent ou masquent les parties Poêle, Réglages manuels, Programmation (liste des programmations) et Suivi. Le bouton « Gérer les programmations » reste toujours affiché : dans la partie Poêle, ou dans la section Programmation quand la partie Poêle est masquée.
+- **Parties affichées** : en haut de l'éditeur, des interrupteurs affichent ou masquent les parties Poêle, Réglages manuels, Programmation (liste des programmations) et Suivi, ainsi que le graphique des 24 dernières heures dans Suivi. Le bouton « Gérer les programmations » reste toujours affiché : dans la partie Poêle, ou dans la section Programmation quand la partie Poêle est masquée.
 - **Options de l'intégration** : un bouton en haut de l'éditeur de la carte ouvre directement les options de l'intégration (fenêtres, présence, historique, planning de secours…), communes à toutes les cartes. Enregistrer la carte avant : l'éditeur se ferme.
 
 <img src="docs/screenshots/editeur.png" alt="Éditeur" width="360">
@@ -169,6 +170,7 @@ climate: climate.poele
 #### Programmations
 
 - **Gérer les programmations** ouvre le menu : liste, modification, création et suppression.
+- **Replier / déployer** : un appui sur le titre « Programmation » (flèche ▸ / ▾) replie la liste sur une ligne (programmation en cours et heure de fin). L'état est retenu sur chaque appareil.
 - Les étiquettes d'une programmation (Puissance, V1, V2, Stand-by, Silence) changent la valeur à chaque appui.
 - **Classement** : dans le menu des programmations, les flèches ▲ ▼ changent l'ordre (la plus haute l'emporte en cas de chevauchement).
 - **Heures** : début et fin se règlent avec − / + par pas de 5 minutes (appui long pour défiler) ; un appui sur l'heure ouvre le sélecteur.
@@ -187,6 +189,10 @@ climate: climate.poele
 
 ![Granulés](docs/screenshots/menu_granules.png)
 
+- **Tuile Alarme en cours** : un appui ouvre les 10 dernières alarmes, avec date et heure de début et de fin.
+
+![Alarmes](docs/screenshots/menu_alarmes.png)
+
 #### Options de la carte
 
 | Option | Défaut | Rôle |
@@ -200,7 +206,7 @@ climate: climate.poele
 | `image_window` | — | Vitre d'une image personnelle, en % d'un cadre 140 × 212 : `x`, `y`, `width`, `height` |
 | `image_calibration` | `false` | Affiche le cadre de la vitre pour la régler |
 | `show_header`, `show_modes`, `show_planning`, `show_tracking` | `true` | Parties affichées : Poêle, Réglages manuels, Programmation (liste), Suivi ; réglables dans l'éditeur |
-| `show_graph` | `true` | Graphique de la partie Suivi |
+| `show_graph` | `true` | Graphique de la partie Suivi ; réglable dans l'éditeur |
 | `status`, `fan2`, `relax`, `standby`, `real_power`, `real_fan1`, `real_fan2`, `pellet`, `ignitions`, `alarm`, `alarm_label` | détection | Entités du firmware, si la détection automatique ne les trouve pas |
 
 ### Référence
@@ -218,6 +224,7 @@ Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
 | `sensor.poele_programmation_en_cours` | Programmation appliquée (attributs `profile`, `substitution`, `occupied`, `resync`, `observe`) |
 | `sensor.poele_prochain_changement` | Prochain début ou fin de plage |
 | `sensor.poele_dernier_allumage` | Dernier allumage (attribut `history` : allumages des 3 derniers jours, début et arrêt) |
+| `sensor.poele_derniere_alarme` | Début de la dernière alarme (attribut `history` : 10 dernières alarmes, libellé, début et fin) |
 | `update.poele_firmware_de_l_esp32` | Firmware de l'ESP32 : version installée, dernière version, installation à distance (firmware 2026.11.2 ou plus récent ; le sujet MQTT du planning de secours doit être renseigné) |
 | `switch.poele_derogation_de_consigne` | Dérogation de consigne (attribut `reference`) |
 | `switch.poele_reglages_manuels` | Réglages manuels ; le couper = « Rendre la main » |
@@ -314,6 +321,7 @@ When a watched window or door stays open longer than the delay before cut-off (0
 - **Pellet hopper**: burn hours since refill, last and average hopper duration, estimated autonomy, alert threshold, reserve reported by the stove. Everything is grouped in the menu of the card's Pellets tile. A hopper follow-up already kept by an automation is imported once at first start, when found: `sensor.…poele…heures_depuis_remplissage`, `input_text.…poele…durees_reservoirs`, `input_number.…poele…dernier_chargement` and `input_number.…poele…seuil_alerte_reservoir` (the import is written to the log).
 - **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (optional, when installed): the “Hopper refilled” button logs the consumption in Suivi Stock Pellet, a consumption logged in Suivi Stock Pellet resets the hopper counter, and the stock autonomy is computed.
 - **Ignition history**: ignitions of the last 3 days (start, stop, duration, total and average), from the stove ignition counter. Shown by the card's Ignitions tile. A history already kept by an automation (« dd/mm hh:mm ; … » lists in `input_text`) is imported and followed.
+- **Alarm history**: the last 10 stove alarms (label, start, end, duration), recorded from the alarm published by the ESP32. Shown by the card's Current alarm tile. The history starts when version 2026.11.18 is installed.
 
 ### Requirements
 
@@ -421,7 +429,7 @@ climate: climate.stove
 
 #### Editor
 
-- **Displayed parts**: at the top of the editor, four switches show or hide the Stove, Manual settings, Schedules (schedule list) and Tracking parts. The “Manage schedules” button is always shown: in the Stove part, or in the Schedules section when the Stove part is hidden.
+- **Displayed parts**: at the top of the editor, switches show or hide the Stove, Manual settings, Schedules (schedule list) and Tracking parts, and the last 24 hours graph in Tracking. The “Manage schedules” button is always shown: in the Stove part, or in the Schedules section when the Stove part is hidden.
 - **Integration options**: a button at the top of the card editor opens the integration options directly (windows, presence, history, fallback schedule…), shared by all cards. Save the card first: the editor closes.
 
 <img src="docs/screenshots/editeur.png" alt="Editor" width="360">
@@ -429,6 +437,7 @@ climate: climate.stove
 #### Schedules
 
 - **Manage schedules** opens the menu: list, edit, create and delete.
+- **Fold / unfold**: tapping the “Schedules” title (▸ / ▾ arrow) folds the list into one line (running schedule and its end time). The state is kept on each device.
 - The tags of a schedule (Power, V1, V2, Standby, Silent) change the value on each tap.
 - **Ordering**: in the schedule menu, the ▲ ▼ arrows change the order (the highest wins when schedules overlap).
 - **Times**: start and end are set with − / + in 5-minute steps (hold to scroll); tapping the time opens the picker.
@@ -447,6 +456,10 @@ climate: climate.stove
 
 ![Pellets](docs/screenshots/menu_granules.png)
 
+- **Current alarm tile**: a tap opens the last 10 alarms, with start and end date and time.
+
+![Alarms](docs/screenshots/menu_alarmes.png)
+
 #### Card options
 
 | Option | Default | Purpose |
@@ -460,7 +473,7 @@ climate: climate.stove
 | `image_window` | — | Glass of your own picture, in % of a 140 × 212 frame: `x`, `y`, `width`, `height` |
 | `image_calibration` | `false` | Shows the glass frame to adjust it |
 | `show_header`, `show_modes`, `show_planning`, `show_tracking` | `true` | Displayed parts: Stove, Manual settings, Schedules (list), Tracking; set in the editor |
-| `show_graph` | `true` | Graph of the Tracking part |
+| `show_graph` | `true` | Graph of the Tracking part; set in the editor |
 | `status`, `fan2`, `relax`, `standby`, `real_power`, `real_fan1`, `real_fan2`, `pellet`, `ignitions`, `alarm`, `alarm_label` | detection | Firmware entities, when automatic detection does not find them |
 
 ### Reference
@@ -478,6 +491,7 @@ The entity IDs depend on the entry name and on the Home Assistant language (show
 | `sensor.stove_current_schedule` | Applied schedule (attributes `profile`, `substitution`, `occupied`, `resync`, `observe`) |
 | `sensor.stove_next_change` | Next slot start or end |
 | `sensor.stove_last_ignition` | Last ignition (attribute `history`: ignitions of the last 3 days, start and stop) |
+| `sensor.stove_last_alarm` | Start of the last alarm (attribute `history`: last 10 alarms, label, start and end) |
 | `update.stove_esp32_firmware` | ESP32 firmware: installed version, latest version, remote install (firmware 2026.11.2 or newer; the fallback schedule MQTT topic must be set) |
 | `switch.stove_setpoint_override` | Setpoint override (attribute `reference`) |
 | `switch.stove_manual_settings` | Manual settings; turning it off = “Give back” |

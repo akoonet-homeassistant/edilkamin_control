@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "edilkamin_control"
-VERSION = "2026.11.17"
+VERSION = "2026.11.18"
 
 # Clés de configuration (entrée de configuration / options)
 CONF_CLIMATE = "climate"
@@ -36,6 +36,11 @@ DEVICE_SUFFIXES: dict[str, tuple[str, tuple[str, ...]]] = {
     CONF_CHRONO: ("switch", ("_chrono",)),
     CONF_IGNITIONS: ("sensor", ("_nombre_d_allumages", "_ignitions")),
 }
+
+# Historique des alarmes : nombre gardé
+ALARM_HISTORY = 10
+# Suffixes des entités d'alarme du firmware (état, libellé)
+ALARM_SUFFIXES = {"alarm": ("binary_sensor", ("_alarme", "_alarm")), "alarm_label": ("sensor", ("_alarme_en_cours", "_alarm_label"))}
 
 # Modes d'une programmation
 MODE_RUN = "run"

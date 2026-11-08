@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.17";
+const ECC_VERSION = "2026.11.18";
 
 // Échappement HTML de toute valeur venant de Home Assistant ou de la configuration
 // (noms de programmation, états, options, libellés d'alarme, noms d'entités…)
@@ -30,7 +30,8 @@ const ECC_I18N = {
     win_resume_at: "reprise de la programmation à", give_back: "Rendre la main", cancel: "Annuler",
     profile: "Profil", mode_run: "Marche", mode_standby: "Stand-by", all_day: "toute la journée",
     tracking: "Suivi", last24: "24 dernières heures", ignitions: "Allumages",
-    alarm_now: "Alarme en cours", none: "Aucune", pellets: "Granulés", pellets_ok: "OK", pellets_low: "Réserve",
+    alarm_now: "Alarme en cours", none: "Aucune", alarm_title: "10 dernières alarmes", alarm_start: "Début", alarm_end: "Fin",
+    no_alarm: "Aucune alarme enregistrée depuis l’installation de l’historique des alarmes.", alarm_unknown: "Alarme", fold_until: "jusqu’à", no_current: "Aucune programmation en cours", pellets: "Granulés", pellets_ok: "OK", pellets_low: "Réserve",
     temp: "Température", power_short: "Puiss.", exhaust: "Fumées",
     silence: "Silence", days: ["L", "M", "M", "J", "V", "S", "D"], every_day: "tous les jours", weekdays: "lun.–ven.", weekend: "sam.–dim.",
     add_profile: "Ajouter une programmation", del: "Supprimer", confirm_del: "Supprimer ?", close: "Fermer",
@@ -64,7 +65,8 @@ const ECC_I18N = {
     win_resume_at: "schedule resumes at", give_back: "Give back", cancel: "Cancel",
     profile: "Profile", mode_run: "Run", mode_standby: "Standby", all_day: "all day",
     tracking: "Tracking", last24: "Last 24 hours", ignitions: "Ignitions",
-    alarm_now: "Current alarm", none: "None", pellets: "Pellets", pellets_ok: "OK", pellets_low: "Low",
+    alarm_now: "Current alarm", none: "None", alarm_title: "Last 10 alarms", alarm_start: "Start", alarm_end: "End",
+    no_alarm: "No alarm recorded since the alarm history was installed.", alarm_unknown: "Alarm", fold_until: "until", no_current: "No schedule running", pellets: "Pellets", pellets_ok: "OK", pellets_low: "Low",
     temp: "Temperature", power_short: "Power", exhaust: "Exhaust",
     silence: "Silent", days: ["M", "T", "W", "T", "F", "S", "S"], every_day: "every day", weekdays: "Mon–Fri", weekend: "Sat–Sun",
     add_profile: "Add a schedule", del: "Delete", confirm_del: "Delete?", close: "Close",
@@ -119,6 +121,7 @@ const ECC_PLANNER_KEYS = {
   res_alert: "reservoir_alert",    // number : seuil d'alerte (h)
   res_filled: "reservoir_filled",  // button : réservoir rempli
   res_low: "reservoir_low",        // binary_sensor : réservoir bientôt vide
+  alarm_hist: "last_alarm",       // sensor : dernière alarme (attribut history, 10 dernières)
   ign_hist: "last_ignition",       // sensor : dernier allumage (attribut history, 3 jours)
 };
 const ECC_PROFILE_KEYS = ["profile_active", "profile_start", "profile_end", "profile_setpoint", "profile_mode", "profile_name",
@@ -590,10 +593,21 @@ class EdilkaminControlCard extends HTMLElement {
     return best ? best.t : null;
   }
 
+  // Partie Programmation repliée ou déployée : mémorisé sur l'appareil (stockage du navigateur)
+  _foldKey() { return `ecc-fold-planning-${this._config?.climate || ""}`; }
+  _folded() {
+    if (this._fold === undefined) { try { this._fold = localStorage.getItem(this._foldKey()) === "1"; } catch (_e) { this._fold = false; } }
+    return this._fold;
+  }
+
   _planning(list = true) {
     const r = this._resolved, out = [];
     const planning = this._s("planning");
-    out.push(`<div class="sec-title">${this._t("planning")}
+    const folded = list && this._folded();
+    const title = list
+      ? `<button class="fold" data-act="fold"><ha-icon icon="${folded ? "mdi:chevron-right" : "mdi:chevron-down"}"></ha-icon>${this._t("planning")}</button>`
+      : this._t("planning");
+    out.push(`<div class="sec-title">${title}
       ${planning ? `<button class="mini ${planning.state === "on" ? "on" : ""}" data-act="toggle" data-entity="${eccE(r.planning)}">
         <ha-icon icon="${planning.state === "on" ? "mdi:calendar-check" : "mdi:calendar-remove"}"></ha-icon>${this._t(planning.state === "on" ? "planning_on" : "planning_off")}</button>` : ""}</div>`);
     // Fenêtre ouverte : coupure en attente ou poêle coupé
@@ -631,7 +645,11 @@ class EdilkaminControlCard extends HTMLElement {
     const cur = this._v("current_profile");
     // « Gérer les programmations » : dans la partie Poêle quand elle est affichée, sinon ici
     const manage = this._config.show_header === false;
-    out.push(`${list ? `<div class="profiles">${r.profiles.map((p) => this._profileRow(p, cur)).join("")}</div>` : ""}
+    const curSt = this._s("current_profile"), nx = this._nextSlot();
+    const curName = !curSt || ["Aucun", "none", "unknown", "unavailable", ""].includes(curSt.state) ? null : curSt.state;
+    const summary = `<div class="foldsum" data-act="fold"><ha-icon icon="mdi:calendar-clock"></ha-icon><span>${curName
+      ? `<b>${eccE(curName)}</b>${nx ? ` · ${this._t("fold_until")} ${eccE(nx)}` : ""}` : this._t("no_current")}</span></div>`;
+    out.push(`${list ? (folded ? summary : `<div class="profiles">${r.profiles.map((p) => this._profileRow(p, cur)).join("")}</div>`) : ""}
       ${manage ? `<button class="add" data-act="page" data-page="list"><ha-icon icon="mdi:calendar-edit"></ha-icon><span>${this._t("manage")}</span></button>` : ""}`);
     return out.join("");
   }
@@ -705,6 +723,7 @@ class EdilkaminControlCard extends HTMLElement {
     const pg = this._page ?? "list";
     if (pg === "pellet") return this._pelletSheet(overlay);
     if (pg === "ignitions") return this._ignitionSheet(overlay);
+    if (pg === "alarms") return this._alarmSheet(overlay);
     const close = overlay ? `<button class="round" data-act="page" data-page="close"><ha-icon icon="mdi:close"></ha-icon></button>` : "";
     if (pg === "list") {
       const cur = this._v("current_profile");
@@ -844,8 +863,8 @@ class EdilkaminControlCard extends HTMLElement {
   }
 
   _tracking() {
-    const tile = (icon, label, value, color, entity) => `
-      <div class="tile" data-act="more" data-entity="${eccE(entity)}">
+    const tile = (icon, label, value, color, entity, page) => `
+      <div class="tile" ${page ? `data-act="page" data-page="${page}"` : `data-act="more" data-entity="${eccE(entity)}"`}>
         <ha-icon icon="${icon}" style="color:${color}"></ha-icon><span class="tl">${eccE(label)}</span><span class="tv">${eccE(value)}</span></div>`;
     const ign = this._v("ignitions");
     const al = this._v("alarm") === "on";
@@ -858,7 +877,7 @@ class EdilkaminControlCard extends HTMLElement {
     <div class="tiles">
       ${this._resolved.ignitions || this._resolved.ign_hist ? `<div class="tile" data-act="page" data-page="ignitions">
         <ha-icon icon="mdi:fire-circle" style="color:#f06b21"></ha-icon><span class="tl">${this._t("ignitions")}</span><span class="tv">${eccE(ign ?? "—")}</span></div>` : ""}
-      ${this._resolved.alarm ? tile(al ? "mdi:alert" : "mdi:check-circle", this._t("alarm_now"), al ? (lab || this._t("alarm")) : this._t("none"), al ? "#e53935" : "#2ea55f", this._resolved.alarm_label || this._resolved.alarm) : ""}
+      ${this._resolved.alarm ? tile(al ? "mdi:alert" : "mdi:check-circle", this._t("alarm_now"), al ? (lab || this._t("alarm")) : this._t("none"), al ? "#e53935" : "#2ea55f", this._resolved.alarm_label || this._resolved.alarm, this._resolved.alarm_hist ? "alarms" : null) : ""}
       ${this._resolved.pellet || this._resolved.res_hours ? this._pelletTile(low) : ""}
     </div>`;
   }
@@ -912,6 +931,24 @@ class EdilkaminControlCard extends HTMLElement {
     const foot = days.size ? `<div class="igsum"><span>${this._t("total")}</span><b>${dur(tot)}</b><span>${this._t("average")}</span><b>${dur(n ? Math.round(tot / n) : 0)}</b>
       ${cnt !== undefined ? `<span>${this._t("counter")}</span><b>${eccE(cnt)}</b>` : ""}</div>` : "";
     return `<div class="mhead"><ha-icon icon="mdi:fire-circle" class="hicon"></ha-icon><b>${this._t("ign_title")}</b>${close}</div>${body}${foot}`;
+  }
+
+  /* Menu « Alarmes » : 10 dernières alarmes, libellé, début, fin, durée */
+  _alarmSheet(overlay) {
+    const hist = this._s("alarm_hist")?.attributes?.history || [];
+    const lang = this._hass?.locale?.language || "fr";
+    const dt = (d) => `${d.toLocaleDateString(lang, { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}`;
+    const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}` : `${m} min`);
+    const close = overlay ? `<button class="round" data-act="page" data-page="close"><ha-icon icon="mdi:close"></ha-icon></button>` : "";
+    const rows = hist.map((r) => {
+      const s = new Date(r.start), e = r.end ? new Date(r.end) : null;
+      if (isNaN(s)) return "";
+      const m = Math.max(0, Math.round(((e || new Date()) - s) / 60000));
+      return `<div class="alrow"><div class="altitle"><ha-icon icon="mdi:alert" style="color:${e ? "var(--secondary-text-color)" : "#e53935"}"></ha-icon><b>${eccE(r.label || this._t("alarm_unknown"))}</b><span>${dur(m)}</span></div>
+        <div class="altimes"><span>${this._t("alarm_start")} <b>${dt(s)}</b></span><span>${this._t("alarm_end")} <b>${e ? dt(e) : `<i class="red">${this._t("running")}</i>`}</b></span></div></div>`;
+    }).join("");
+    return `<div class="mhead"><ha-icon icon="mdi:alert-circle-outline" class="hicon"></ha-icon><b>${this._t("alarm_title")}</b>${close}</div>
+      ${rows || `<div class="hint">${this._t("no_alarm")}</div>`}`;
   }
 
   /* Menu « Réservoir de granulés » : mêmes informations que le menu du poêle */
@@ -1023,6 +1060,12 @@ class EdilkaminControlCard extends HTMLElement {
     const act = el.dataset.act, ent = el.dataset.entity, val = el.dataset.val, clim = this._resolved.climate;
     const a = this._s("climate")?.attributes || {};
     switch (act) {
+      case "fold": {
+        this._fold = !this._folded();
+        try { localStorage.setItem(this._foldKey(), this._fold ? "1" : "0"); } catch (_e) { /* stockage indisponible */ }
+        this._sig = ""; this._render();
+        break;
+      }
       case "sp-": case "sp+": {
         const step = a.target_temp_step || 0.5;
         const t = Math.min(a.max_temp ?? 30, Math.max(a.min_temp ?? 15, Number(a.temperature) + (act === "sp+" ? step : -step)));
@@ -1208,6 +1251,16 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .btn.act { background: rgba(240,107,33,.12); } .btn.act ha-icon { color: var(--ecc-accent); }
 .btn .dot { margin-left: auto; width: 10px; height: 10px; border-radius: 50%; background: rgba(127,127,127,.35); }
 .btn .dot.on { background: var(--ecc-accent); }
+.alrow { padding: 10px 2px; border-bottom: 1px solid var(--divider-color, #e0e0e0); }
+.altitle { display: flex; align-items: center; gap: 8px; }
+.altitle b { flex: 1; }
+.altitle span { color: var(--secondary-text-color); font-size: 13px; }
+.altimes { display: flex; gap: 16px; flex-wrap: wrap; margin: 4px 0 0 32px; font-size: 13px; color: var(--secondary-text-color); }
+.altimes b { color: var(--primary-text-color); font-weight: 500; }
+.fold { display: flex; align-items: center; gap: 4px; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; color: inherit; }
+.fold ha-icon { --mdc-icon-size: 20px; color: var(--secondary-text-color); }
+.foldsum { display: flex; align-items: center; gap: 8px; padding: 10px 12px; margin-bottom: 8px; border-radius: 12px; background: var(--secondary-background-color, #f2f2f2); cursor: pointer; font-size: 14px; }
+.foldsum ha-icon { --mdc-icon-size: 18px; color: var(--ecc-accent, #f06b21); }
 .sec-title { display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
 .lbl2 { font-size: 12px; color: var(--secondary-text-color); margin: 8px 0 4px; }
 .seg { display: flex; gap: 4px; background: var(--ecc-soft); padding: 3px; border-radius: 12px; }
@@ -1341,6 +1394,7 @@ const ECC_ED_I18N = {
     show_modes: "Réglages manuels (puissance, ventilations, stand-by, silence)",
     show_planning: "Programmation (liste des programmations)",
     show_tracking: "Suivi (graphique, allumages, granulés, alarme)",
+    show_graph: "Graphique des 24 dernières heures (dans Suivi)",
     open_options: "Options de l'intégration", open_options_hint: "Fenêtres, présence, historique, planning de secours… Réglages communs à toutes les cartes. Pensez à enregistrer la carte avant." },
   en: { climate: "Stove thermostat", title: "Title", image_mode: "Stove picture", bild9: "Edilkamin Bild 9+", builtin: "Simple drawing", custom: "Own picture",
     image: "Picture URL (e.g. /local/stove/stove.svg)", win_x: "Glass: left (%)", win_y: "Glass: top (%)", win_w: "Glass: width (%)",
@@ -1349,6 +1403,7 @@ const ECC_ED_I18N = {
     show_modes: "Manual settings (power, fans, standby, silent)",
     show_planning: "Schedules (schedule list)",
     show_tracking: "Tracking (graph, ignitions, pellets, alarm)",
+    show_graph: "Last 24 hours graph (in Tracking)",
     open_options: "Integration options", open_options_hint: "Windows, presence, history, fallback schedule… Settings shared by all cards. Save the card first." },
 };
 
@@ -1364,7 +1419,7 @@ class EdilkaminControlCardEditor extends HTMLElement {
     const kind = im === "default" ? "generic" : (ECC_IMAGES[im] || im === "generic") ? im : "custom";
     const custom = kind === "custom";
     return { climate: c.climate, title: c.title, temperature_entity: c.temperature_entity, temperature_name: c.temperature_name, image_mode: kind,
-      show_header: c.show_header !== false, show_modes: c.show_modes !== false, show_planning: c.show_planning !== false, show_tracking: c.show_tracking !== false,
+      show_header: c.show_header !== false, show_modes: c.show_modes !== false, show_planning: c.show_planning !== false, show_tracking: c.show_tracking !== false, show_graph: c.show_graph !== false,
       image: custom ? c.image : "", win_x: w.x ?? 25, win_y: w.y ?? 25, win_w: w.width ?? 50, win_h: w.height ?? 40,
       image_calibration: !!c.image_calibration };
   }
@@ -1376,6 +1431,7 @@ class EdilkaminControlCardEditor extends HTMLElement {
       { name: "show_modes", selector: { boolean: {} } },
       { name: "show_planning", selector: { boolean: {} } },
       { name: "show_tracking", selector: { boolean: {} } },
+      { name: "show_graph", selector: { boolean: {} }, disabled: d.show_tracking === false },
       { name: "climate", required: true, selector: { entity: { domain: "climate" } } },
       { name: "title", selector: { text: {} } },
       { name: "temperature_entity", selector: { entity: { filter: { domain: "sensor", device_class: "temperature" } } } },
@@ -1449,7 +1505,7 @@ class EdilkaminControlCardEditor extends HTMLElement {
     const c = { ...this._config, climate: v.climate };
     for (const k of ["title", "temperature_entity", "temperature_name"]) { if (v[k]) c[k] = v[k]; else delete c[k]; }
     // Sections : enregistrées seulement quand elles sont masquées (affichées par défaut)
-    for (const k of ["show_header", "show_modes", "show_planning", "show_tracking"]) { if (v[k] === false) c[k] = false; else delete c[k]; }
+    for (const k of ["show_header", "show_modes", "show_planning", "show_tracking", "show_graph"]) { if (v[k] === false) c[k] = false; else delete c[k]; }
     if (v.image_mode === "custom") {
       c.image = v.image || "/local/poele.svg";
       c.image_window = { x: Number(v.win_x), y: Number(v.win_y), width: Number(v.win_w), height: Number(v.win_h) };
