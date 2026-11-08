@@ -24,8 +24,8 @@
           "bags_per_fill": "Sacs versés par remplissage",
           "observe": "Mode observation (calcule sans commander le poêle)",
           "ignitions": "Compteur d'allumages du poêle",
-          "ignition_log": "Historique des allumages existant (input_text)",
-          "stop_log": "Historique des arrêts existant (input_text)",
+          "ignition_log": "Historique des allumages existant (input_text, facultatif)",
+          "stop_log": "Historique des arrêts existant (input_text, facultatif)",
           "firmware_url": "Manifeste du firmware ESP32 (mise à jour à distance)",
           "windows": "Fenêtres et portes surveillées",
           "window_open_delay": "Délai avant coupure (fenêtre ouverte)",
@@ -36,11 +36,12 @@
           "mqtt_topic": "Laisser vide pour ne pas envoyer de planning à l'ESP32.",
           "schedule_format": "v1 pour le firmware akoonet-13 (5 plages, sans jours ni silence).",
           "observe": "Pour faire tourner l'intégration à côté d'automatisations existantes : les ordres sont seulement inscrits dans le journal.",
-          "ignition_log": "Liste « jj/mm hh:mm ; … » tenue par une automatisation, la plus récente en premier : reprise dans le bouton Allumages de la carte.",
+          "ignition_log": "Seulement si une automatisation tenait déjà la liste des allumages du poêle (« jj/mm hh:mm ; … », du plus récent au plus ancien) : elle est reprise dans le bouton Allumages de la carte, puis suivie. Laisser vide sinon : l'intégration tient son propre historique grâce au compteur d'allumages du poêle.",
           "firmware_url": "Vide = page d'installation du projet sur GitHub. Peut pointer vers un fichier ota.json servi par Home Assistant (/local/…) ou un autre serveur.",
           "windows": "Une fenêtre ouverte coupe le poêle s'il est allumé et empêche la programmation de l'allumer. La programmation reprend quand toutes sont refermées.",
           "window_open_delay": "Temps pendant lequel une fenêtre doit rester ouverte avant que le poêle soit coupé (0 = aussitôt). Une aération plus courte ne coupe rien.",
-          "window_close_delay": "Temps après la fermeture de la dernière fenêtre avant de reprendre la programmation (0 = aussitôt)."
+          "window_close_delay": "Temps après la fermeture de la dernière fenêtre avant de reprendre la programmation (0 = aussitôt).",
+          "stop_log": "Liste des arrêts tenue par la même automatisation, dans le même ordre (« - » = allumage en cours, « ? » = arrêt non vu) : elle complète les heures d'arrêt de l'historique. Laisser vide sinon."
         }
       }
     },
@@ -65,8 +66,8 @@
           "bags_per_fill": "Sacs versés par remplissage",
           "observe": "Mode observation (calcule sans commander le poêle)",
           "ignitions": "Compteur d'allumages du poêle",
-          "ignition_log": "Historique des allumages existant (input_text)",
-          "stop_log": "Historique des arrêts existant (input_text)",
+          "ignition_log": "Historique des allumages existant (input_text, facultatif)",
+          "stop_log": "Historique des arrêts existant (input_text, facultatif)",
           "firmware_url": "Manifeste du firmware ESP32 (mise à jour à distance)",
           "windows": "Fenêtres et portes surveillées",
           "window_open_delay": "Délai avant coupure (fenêtre ouverte)",
@@ -77,11 +78,12 @@
           "mqtt_topic": "Laisser vide pour ne pas envoyer de planning à l'ESP32.",
           "schedule_format": "v1 pour le firmware akoonet-13 (5 plages, sans jours ni silence).",
           "observe": "Pour faire tourner l'intégration à côté d'automatisations existantes : les ordres sont seulement inscrits dans le journal.",
-          "ignition_log": "Liste « jj/mm hh:mm ; … » tenue par une automatisation, la plus récente en premier : reprise dans le bouton Allumages de la carte.",
+          "ignition_log": "Seulement si une automatisation tenait déjà la liste des allumages du poêle (« jj/mm hh:mm ; … », du plus récent au plus ancien) : elle est reprise dans le bouton Allumages de la carte, puis suivie. Laisser vide sinon : l'intégration tient son propre historique grâce au compteur d'allumages du poêle.",
           "firmware_url": "Vide = page d'installation du projet sur GitHub. Peut pointer vers un fichier ota.json servi par Home Assistant (/local/…) ou un autre serveur.",
           "windows": "Une fenêtre ouverte coupe le poêle s'il est allumé et empêche la programmation de l'allumer. La programmation reprend quand toutes sont refermées.",
           "window_open_delay": "Temps pendant lequel une fenêtre doit rester ouverte avant que le poêle soit coupé (0 = aussitôt). Une aération plus courte ne coupe rien.",
-          "window_close_delay": "Temps après la fermeture de la dernière fenêtre avant de reprendre la programmation (0 = aussitôt)."
+          "window_close_delay": "Temps après la fermeture de la dernière fenêtre avant de reprendre la programmation (0 = aussitôt).",
+          "stop_log": "Liste des arrêts tenue par la même automatisation, dans le même ordre (« - » = allumage en cours, « ? » = arrêt non vu) : elle complète les heures d'arrêt de l'historique. Laisser vide sinon."
         }
       }
     }

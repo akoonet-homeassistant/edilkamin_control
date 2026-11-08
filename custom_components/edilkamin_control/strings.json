@@ -24,8 +24,8 @@
           "bags_per_fill": "Bags poured per refill",
           "observe": "Observe mode (computes without driving the stove)",
           "ignitions": "Stove ignition counter",
-          "ignition_log": "Existing ignition history (input_text)",
-          "stop_log": "Existing stop history (input_text)",
+          "ignition_log": "Existing ignition history (input_text, optional)",
+          "stop_log": "Existing stop history (input_text, optional)",
           "firmware_url": "ESP32 firmware manifest (remote update)",
           "windows": "Watched windows and doors",
           "window_open_delay": "Delay before cut-off (window open)",
@@ -36,11 +36,12 @@
           "mqtt_topic": "Leave empty to send no schedule to the ESP32.",
           "schedule_format": "v1 for the akoonet-13 firmware (5 slots, no days or silent mode).",
           "observe": "To run the integration next to existing automations: commands are only written to the logbook.",
-          "ignition_log": "« dd/mm hh:mm ; … » list kept by an automation, newest first: imported into the card's Ignitions button.",
+          "ignition_log": "Only when an automation already kept the stove ignition list (« dd/mm hh:mm ; … », newest first): it is imported into the card's Ignitions button, then followed. Leave empty otherwise: the integration keeps its own history from the stove ignition counter.",
           "firmware_url": "Empty = project install page on GitHub. Can point to an ota.json file served by Home Assistant (/local/…) or another server.",
           "windows": "An open window turns the stove off if it is on and keeps the schedule from turning it on. The schedule resumes once they are all closed.",
           "window_open_delay": "How long a window must stay open before the stove is turned off (0 = right away). Shorter airing does nothing.",
-          "window_close_delay": "Time after the last window is closed before the schedule resumes (0 = right away)."
+          "window_close_delay": "Time after the last window is closed before the schedule resumes (0 = right away).",
+          "stop_log": "Stop list kept by the same automation, in the same order (« - » = ignition running, « ? » = missed stop): it fills in the stop times of the history. Leave empty otherwise."
         }
       }
     },
@@ -65,8 +66,8 @@
           "bags_per_fill": "Bags poured per refill",
           "observe": "Observe mode (computes without driving the stove)",
           "ignitions": "Stove ignition counter",
-          "ignition_log": "Existing ignition history (input_text)",
-          "stop_log": "Existing stop history (input_text)",
+          "ignition_log": "Existing ignition history (input_text, optional)",
+          "stop_log": "Existing stop history (input_text, optional)",
           "firmware_url": "ESP32 firmware manifest (remote update)",
           "windows": "Watched windows and doors",
           "window_open_delay": "Delay before cut-off (window open)",
@@ -77,11 +78,12 @@
           "mqtt_topic": "Leave empty to send no schedule to the ESP32.",
           "schedule_format": "v1 for the akoonet-13 firmware (5 slots, no days or silent mode).",
           "observe": "To run the integration next to existing automations: commands are only written to the logbook.",
-          "ignition_log": "« dd/mm hh:mm ; … » list kept by an automation, newest first: imported into the card's Ignitions button.",
+          "ignition_log": "Only when an automation already kept the stove ignition list (« dd/mm hh:mm ; … », newest first): it is imported into the card's Ignitions button, then followed. Leave empty otherwise: the integration keeps its own history from the stove ignition counter.",
           "firmware_url": "Empty = project install page on GitHub. Can point to an ota.json file served by Home Assistant (/local/…) or another server.",
           "windows": "An open window turns the stove off if it is on and keeps the schedule from turning it on. The schedule resumes once they are all closed.",
           "window_open_delay": "How long a window must stay open before the stove is turned off (0 = right away). Shorter airing does nothing.",
-          "window_close_delay": "Time after the last window is closed before the schedule resumes (0 = right away)."
+          "window_close_delay": "Time after the last window is closed before the schedule resumes (0 = right away).",
+          "stop_log": "Stop list kept by the same automation, in the same order (« - » = ignition running, « ? » = missed stop): it fills in the stop times of the history. Leave empty otherwise."
         }
       }
     }

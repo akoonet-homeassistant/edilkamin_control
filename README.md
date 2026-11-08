@@ -135,6 +135,7 @@ climate: climate.poele
 - **Thermostat** : cadran comme la commande de thermostat de Home Assistant (température actuelle, arc jusqu'à la consigne, Chauffage / Éteint, boutons − / +).
 - **Thermomètre** : un capteur de température choisi dans l'éditeur s'affiche sous le titre (« Salon : 21,6°C ») ; un appui ouvre sa fiche.
 - **Image du poêle** : choisie dans l'éditeur visuel de la carte. Les flammes, les ventilateurs et l'écran s'animent selon l'état du poêle.
+- **Options de l'intégration** : un bouton en haut de l'éditeur de la carte ouvre directement les options de l'intégration (fenêtres, présence, historique, planning de secours…), communes à toutes les cartes. Enregistrer la carte avant : l'éditeur se ferme.
 
 | Edilkamin Bild 9+ (défaut) | Dessin simple | Image personnelle | Éditeur |
 |---|---|---|---|
@@ -352,6 +353,7 @@ climate: climate.stove
 - **Thermostat**: dial like Home Assistant's thermostat control (current temperature, arc up to the setpoint, Heat / Off, − / + buttons).
 - **Thermometer**: a temperature sensor chosen in the editor is shown under the title (“Living room: 21.6°C”); a tap opens its details.
 - **Stove picture**: chosen in the card's visual editor. Flames, fans and display follow the stove state.
+- **Integration options**: a button at the top of the card editor opens the integration options directly (windows, presence, history, fallback schedule…), shared by all cards. Save the card first: the editor closes.
 - The tags of a schedule (Power, V1, V2, Standby, Silent) change the value on each tap.
 - **Ordering**: in the schedule menu, the ▲ ▼ arrows change the order (the highest wins when schedules overlap).
 - **Times**: start and end are set with − / + in 5-minute steps (hold to scroll); tapping the time opens the picker.

@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.13";
+const ECC_VERSION = "2026.11.14";
 
 // Échappement HTML de toute valeur venant de Home Assistant ou de la configuration
 // (noms de programmation, états, options, libellés d'alarme, noms d'entités…)
@@ -1326,10 +1326,12 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 const ECC_ED_I18N = {
   fr: { climate: "Thermostat du poêle", title: "Titre", image_mode: "Image du poêle", bild9: "Edilkamin Bild 9+", builtin: "Dessin simple", custom: "Image personnelle",
     image: "Adresse de l'image (ex. /local/poele/poele.svg)", win_x: "Vitre : gauche (%)", win_y: "Vitre : haut (%)", win_w: "Vitre : largeur (%)",
-    win_h: "Vitre : hauteur (%)", image_calibration: "Afficher le cadre de la vitre (réglage)", mode: "Affichage", full: "Carte complète", planning: "Menu des programmations seul", temperature_entity: "Thermomètre (affiché sous le titre)", temperature_name: "Nom du thermomètre (vide = nom de l'entité)" },
+    win_h: "Vitre : hauteur (%)", image_calibration: "Afficher le cadre de la vitre (réglage)", mode: "Affichage", full: "Carte complète", planning: "Menu des programmations seul", temperature_entity: "Thermomètre (affiché sous le titre)", temperature_name: "Nom du thermomètre (vide = nom de l'entité)",
+    open_options: "Options de l'intégration", open_options_hint: "Fenêtres, présence, historique, planning de secours… Réglages communs à toutes les cartes. Pensez à enregistrer la carte avant." },
   en: { climate: "Stove thermostat", title: "Title", image_mode: "Stove picture", bild9: "Edilkamin Bild 9+", builtin: "Simple drawing", custom: "Own picture",
     image: "Picture URL (e.g. /local/stove/stove.svg)", win_x: "Glass: left (%)", win_y: "Glass: top (%)", win_w: "Glass: width (%)",
-    win_h: "Glass: height (%)", image_calibration: "Show the glass frame (calibration)", mode: "Display", full: "Full card", planning: "Schedule menu only", temperature_entity: "Thermometer (shown under the title)", temperature_name: "Thermometer name (empty = entity name)" },
+    win_h: "Glass: height (%)", image_calibration: "Show the glass frame (calibration)", mode: "Display", full: "Full card", planning: "Schedule menu only", temperature_entity: "Thermometer (shown under the title)", temperature_name: "Thermometer name (empty = entity name)",
+    open_options: "Integration options", open_options_hint: "Windows, presence, history, fallback schedule… Settings shared by all cards. Save the card first." },
 };
 
 class EdilkaminControlCardEditor extends HTMLElement {
@@ -1368,6 +1370,19 @@ class EdilkaminControlCardEditor extends HTMLElement {
 
   _render() {
     if (!this._hass || !this._config) return;
+    if (!this._opt) {
+      // Raccourci vers les options de l'intégration (fenêtres, présence…), réglages communs à toutes les cartes
+      this._opt = document.createElement("div");
+      this._opt.style.cssText = "display:flex;align-items:center;gap:12px;margin:0 0 16px;padding:10px 12px;border-radius:12px;background:var(--secondary-background-color)";
+      const btn = document.createElement("ha-button");
+      btn.addEventListener("click", () => this._openOptions());
+      const hint = document.createElement("span");
+      hint.style.cssText = "font-size:12px;color:var(--secondary-text-color);line-height:1.35";
+      this._opt.append(btn, hint);
+      this.appendChild(this._opt);
+    }
+    this._opt.firstChild.textContent = this._t("open_options");
+    this._opt.lastChild.textContent = this._t("open_options_hint");
     if (!this._form) {
       this._form = document.createElement("ha-form");
       this._form.computeLabel = (sc) => this._t(sc.name);
@@ -1378,6 +1393,34 @@ class EdilkaminControlCardEditor extends HTMLElement {
     this._form.hass = this._hass;
     this._form.data = d;
     this._form.schema = this._schema(d);
+  }
+
+  // Ouvre la page de l'intégration sur cette entrée, puis sa fenêtre d'options dès qu'elle est affichée
+  async _openOptions() {
+    let id = null;
+    try {
+      const es = await this._hass.callWS({ type: "config_entries/get", domain: ECC_DOMAIN });
+      const mine = es.find((e) => e.unique_id === this._config?.climate) || es.find((e) => e.state === "loaded") || es[0];
+      id = mine?.entry_id || null;
+    } catch (_e) { /* pas administrateur : la page de l'intégration suffit */ }
+    history.pushState(null, "", `/config/integrations/integration/${ECC_DOMAIN}${id ? `?config_entry=${id}` : ""}`);
+    window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
+    if (!id) return;
+    const findRow = (root) => {
+      for (const e of root.querySelectorAll("*")) {
+        if (e.tagName === "HA-CONFIG-ENTRY-ROW" && (e.dataset?.entryId === id || e.entry?.entry_id === id)) return e;
+        if (e.shadowRoot) { const r = findRow(e.shadowRoot); if (r) return r; }
+      }
+      return null;
+    };
+    // Bouton « Configurer » de la ligne : icône engrenage (repérée par son tracé ou son libellé)
+    const isCog = (b) => /^M12,8A4,4 0 0,1 16,1|^M12,15\.5A3\.5,3\.5/.test(String(b.path || "")) || /configur|konfigur/i.test(String(b.label || ""));
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 250));
+      const row = findRow(document);
+      const btn = row?.shadowRoot && [...row.shadowRoot.querySelectorAll("ha-icon-button")].find(isCog);
+      if (btn) { btn.click(); return; }
+    }
   }
 
   _changed(v) {
