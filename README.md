@@ -19,28 +19,41 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 
 ![Carte](docs/screenshots/carte.png)
 
+**Sommaire** : [Fonctions](#fonctions) · [Prérequis](#prérequis) · [Installation](#installation) · [Carte](#carte) · [Référence](#référence)
+
 ### Fonctions
+
+#### Programmations
 
 - **Programmations** (10 au maximum) : nom, début, fin (début = fin : toute la journée, plage pouvant passer minuit), jours de la semaine, consigne, mode Marche ou Stand-by, puissance (Auto ou P1 à P5), ventilation 1, ventilation 2, silence (Relax). En cas de chevauchement, la programmation la plus haute dans la liste l'emporte.
 - **Allumage et extinction** : passage hors programmation → programmation, réactivation de la programmation, forçage, et début ou fin de plage quand le poêle est éteint alors que la programmation est en Marche, ou en Stand-by avec une température sous la consigne. Hors programmation, le poêle est éteint (une seule fois, au changement).
+- **Programmation forcée** : une programmation appliquée tout de suite, jusqu'au prochain début ou fin de plage.
+- **Si absent** : avec une entité de présence (alarme, personne, zone, interrupteur…), chaque programmation peut être remplacée par une autre quand la maison est vide.
+
+#### Réglages faits à la main
+
 - **Dérogation de consigne** : une consigne changée à la main est gardée jusqu'au prochain changement de la programmation (début ou fin de plage, autre programmation appliquée, forçage, passage hors programmation) ou jusqu'à une modification de la consigne en cours.
 - **Réglages manuels** : ventilations, puissance, stand-by ou marche/arrêt changés à la main (carte, tableau de bord, application, assistant vocal ou télécommande) ne sont plus renvoyés jusqu'au prochain début ou fin de plage. Bouton « Rendre la main ». Une puissance que le poêle remet de lui-même à « Auto » hors de la phase de marche (arrêt, allumage, extinction), et les valeurs relues au retour de l'ESP32, ne comptent pas comme réglage manuel. La puissance de la programmation est renvoyée dès que le poêle passe en marche.
 - **Silence manuel** : Relax activé à la main est prioritaire jusqu'à minuit.
-- **Programmation forcée** : une programmation appliquée tout de suite, jusqu'au prochain début ou fin de plage.
-- **Si absent** : avec une entité de présence (alarme, personne, zone, interrupteur…), chaque programmation peut être remplacée par une autre quand la maison est vide.
-- **Fenêtres ouvertes** : quand une fenêtre ou une porte surveillée reste ouverte plus longtemps que le délai avant coupure (0 à 60 min), le poêle est coupé s'il est allumé et la programmation ne l'allume plus. Une fois toutes les fenêtres refermées, la programmation reprend après le délai avant reprise (0 à 60 min). Si la programmation est désactivée, le poêle est rallumé s'il l'était avant. Rallumer le poêle à la main fenêtre ouverte lève la coupure jusqu'à la fermeture. La carte affiche un bandeau pendant l'attente et la coupure. Si Home Assistant est arrêté pendant la coupure, le planning de secours de l'ESP32 peut rallumer le poêle.
 
-  ![Fenêtres ouvertes](docs/screenshots/fenetres_ouvertes.png)
+#### Fenêtres ouvertes
+
+Quand une fenêtre ou une porte surveillée reste ouverte plus longtemps que le délai avant coupure (0 à 60 min), le poêle est coupé s'il est allumé et la programmation ne l'allume plus. Une fois toutes les fenêtres refermées, la programmation reprend après le délai avant reprise (0 à 60 min). Si la programmation est désactivée, le poêle est rallumé s'il l'était avant. Rallumer le poêle à la main fenêtre ouverte lève la coupure jusqu'à la fermeture. La carte affiche un bandeau pendant l'attente et la coupure. Si Home Assistant est arrêté pendant la coupure, le planning de secours de l'ESP32 peut rallumer le poêle.
+
+![Fenêtres ouvertes](docs/screenshots/fenetres_ouvertes.png)
+
+#### Fiabilité
 
 - **Vérification** : 4 minutes après un changement de plage, ce que le poêle renvoie est comparé à la programmation et les ordres perdus sont renvoyés une fois (inscrit dans le journal). Après chaque ordre d'allumage de la programmation, si le poêle est toujours à l'arrêt 4 minutes plus tard (et sous la consigne en Stand-by), l'ordre est renvoyé, 2 fois au plus.
 - **Retour de l'ESP32** : si un changement a eu lieu pendant une coupure, tout est renvoyé 1 minute après son retour.
 - **Planning de secours** : publié en MQTT (message retenu) à chaque modification.
+- **Mode observation** : l'intégration calcule tout mais n'envoie rien au poêle, ni le planning de secours à l'ESP32 ; les ordres sont inscrits dans le journal. Pratique pour la faire tourner à côté d'automatisations existantes avant de basculer.
+
+#### Granulés et allumages
+
 - **Réservoir de granulés** : heures de chauffe depuis le remplissage, durée du dernier réservoir, durée moyenne, autonomie estimée, seuil d'alerte, réserve signalée par le poêle. Tout est regroupé dans le menu de la tuile Granulés de la carte. Un suivi déjà tenu par une automatisation est repris une fois au premier démarrage, s'il est trouvé : `sensor.…poele…heures_depuis_remplissage`, `input_text.…poele…durees_reservoirs`, `input_number.…poele…dernier_chargement` et `input_number.…poele…seuil_alerte_reservoir` (la reprise est notée dans le journal).
 - **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (facultatif, s'il est installé) : le bouton « Réservoir rempli » enregistre la consommation dans Suivi Stock Pellet, une consommation saisie dans Suivi Stock Pellet remet le compteur du réservoir à zéro, et l'autonomie du stock est calculée.
 - **Historique des allumages** : les allumages des 3 derniers jours (heure d'allumage, d'arrêt, durée, total et moyenne), d'après le compteur d'allumages du poêle. Affiché par la tuile Allumages de la carte. L'historique déjà tenu par une automatisation (listes « jj/mm hh:mm ; … » en `input_text`) est repris et suivi.
-- **Mode observation** : l'intégration calcule tout mais n'envoie rien au poêle, ni le planning de secours à l'ESP32 ; les ordres sont inscrits dans le journal. Pratique pour la faire tourner à côté d'automatisations existantes avant de basculer.
-- **Carte Lovelace** fournie et chargée automatiquement, avec éditeur visuel et choix de l'image du poêle (Edilkamin Bild 9+ par défaut, dessin simple ou image personnelle).
-- **Firmware ESP32** installable en un clic depuis le navigateur, puis mis à jour à distance depuis Home Assistant ; page web d'état protégée par mot de passe.
 
 ### Prérequis
 
@@ -48,7 +61,11 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 - Un ESP32 [Wemos D1 Mini ESP32](https://amzn.eu/d/00g3VR9p) (ou équivalent) près du poêle, avec le firmware Edilkamin Control (voir ci-dessous). Le firmware d'origine [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT) est aussi pris en charge (non testé), sans planning de secours ni ventilation 2.
 - Un serveur MQTT (par exemple l'app Mosquitto de Home Assistant) et l'intégration MQTT : l'ESP32 publie toutes les entités du poêle en MQTT (thermostat, statut, Stand-by ; ventilation 2, Relax et Chrono si disponibles).
 
-### Firmware ESP32
+### Installation
+
+Trois étapes : le firmware de l'ESP32, l'intégration, puis sa configuration.
+
+#### 1. Firmware de l'ESP32
 
 **Installation et mise à jour en un clic** depuis le navigateur (Chrome ou Edge sur ordinateur, ESP32 branché en USB) :
 
@@ -57,10 +74,10 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 ![Installation du firmware](docs/screenshots/installation_firmware.png)
 
 - **Première installation** : garder le bouton **BOOT** de l'ESP32 appuyé en branchant le câble USB, cliquer sur **Installer**, répondre **oui** à « Effacer l'appareil ». Ensuite, se connecter au Wi-Fi `Edilkamin_BT_AP` pour saisir le Wi-Fi de la maison et le serveur MQTT, puis mettre le poêle en mode appairage Bluetooth. L'appareil « Edilkamin » apparaît dans Home Assistant (MQTT).
-- **Mise à jour** : depuis le firmware 2026.11.2, le firmware se met à jour **à distance** depuis Home Assistant : **Paramètres → Mises à jour → Firmware de l'ESP32 → Installer** (entité de l'intégration). L'ESP32 télécharge le fichier, vérifie sa somme de contrôle (MD5) et redémarre ; en cas d'échec, il reste sur la version précédente. Un fichier `.bin` peut aussi être envoyé depuis la page web de l'ESP32.
-- **Passage à la 2026.11.2** : cette version change la répartition de la mémoire (deux emplacements de programme). Elle s'installe **une dernière fois par USB** en répondant **non** à « Effacer l'appareil » : le Wi-Fi est conservé. Au redémarrage, l'ESP32 ouvre le Wi-Fi `Edilkamin_BT_AP` : s'y connecter, ouvrir **Setup** et ressaisir seulement le serveur MQTT. Le planning de secours est renvoyé par l'intégration. Les réglages (MQTT, mot de passe de la page) sont désormais enregistrés comme le Wi-Fi et survivent aux prochaines mises à jour.
 - **Page web** : `http://<adresse de l'ESP32>/` affiche l'état du poêle et de l'ESP32 (identifiant `admin`). Elle est désactivée tant qu'aucun mot de passe n'est défini (entité « Mot de passe de la page web » de l'appareil Edilkamin ; `-` la désactive). La page est en HTTP : à utiliser sur le réseau local. L'adresse IP est publiée en MQTT (entité « ESP32 adresse IP », lien « Visiter » sur l'appareil).
 - **Bluetooth** : le poêle n'accepte qu'une connexion Bluetooth à la fois, partagée avec la télécommande et l'application Edilkamin. Depuis le firmware 2026.11.3, l'ESP32 lit la température en premier et se déconnecte dès que toutes les valeurs sont relues. Les capteurs « Occupation du Bluetooth » (% du temps sur 15 min) et « Durée de connexion Bluetooth » de l'appareil Edilkamin permettent de le suivre.
+- **Mise à jour** : depuis le firmware 2026.11.2, le firmware se met à jour **à distance** depuis Home Assistant : **Paramètres → Mises à jour → Firmware de l'ESP32 → Installer** (entité de l'intégration). L'ESP32 télécharge le fichier, vérifie sa somme de contrôle (MD5) et redémarre ; en cas d'échec, il reste sur la version précédente. Un fichier `.bin` peut aussi être envoyé depuis la page web de l'ESP32.
+- **Passage à la 2026.11.2** : cette version change la répartition de la mémoire (deux emplacements de programme). Elle s'installe **une dernière fois par USB** en répondant **non** à « Effacer l'appareil » : le Wi-Fi est conservé. Au redémarrage, l'ESP32 ouvre le Wi-Fi `Edilkamin_BT_AP` : s'y connecter, ouvrir **Setup** et ressaisir seulement le serveur MQTT. Le planning de secours est renvoyé par l'intégration. Les réglages (MQTT, mot de passe de la page) sont désormais enregistrés comme le Wi-Fi et survivent aux prochaines mises à jour.
 
 ![Page web de l'ESP32](docs/screenshots/page_web_esp32.png)
 
@@ -83,7 +100,7 @@ esptool.py --chip esp32 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 
 esptool.py --chip esp32 write_flash 0x10000 firmware.bin
 ```
 
-### Installation
+#### 2. Intégration (HACS)
 
 Edilkamin Control fait partie des dépôts **HACS par défaut** : aucun dépôt personnalisé à ajouter.
 
@@ -94,7 +111,7 @@ Edilkamin Control fait partie des dépôts **HACS par défaut** : aucun dépôt 
 
 Si vous aviez ajouté le dépôt dans les **Dépôts personnalisés** de HACS, vous pouvez retirer cette entrée : l'intégration installée et sa configuration sont conservées.
 
-### Configuration
+#### 3. Configuration
 
 | | |
 |---|---|
@@ -128,6 +145,8 @@ type: custom:edilkamin-control-card
 climate: climate.poele
 ```
 
+#### Affichage
+
 | Thème clair | Thème sombre |
 |---|---|
 | ![Carte](docs/screenshots/carte.png) | ![Carte sombre](docs/screenshots/carte_sombre.png) |
@@ -135,31 +154,40 @@ climate: climate.poele
 - **Thermostat** : cadran comme la commande de thermostat de Home Assistant (température actuelle, arc jusqu'à la consigne, Chauffage / Éteint, boutons − / +).
 - **Thermomètre** : un capteur de température choisi dans l'éditeur s'affiche sous le titre (« Salon : 21,6°C ») ; un appui ouvre sa fiche.
 - **Image du poêle** : choisie dans l'éditeur visuel de la carte. Les flammes, les ventilateurs et l'écran s'animent selon l'état du poêle.
+
+| Edilkamin Bild 9+ (défaut) | Dessin simple | Image personnelle |
+|---|---|---|
+| ![Bild 9+](docs/screenshots/image_bild9.png) | ![Dessin simple](docs/screenshots/image_dessin_simple.png) | ![Image personnelle](docs/screenshots/image_personnelle.png) |
+
+#### Éditeur
+
 - **Parties affichées** : en haut de l'éditeur, quatre interrupteurs affichent ou masquent les parties Poêle, Réglages manuels, Programmation (liste des programmations) et Suivi. Le bouton « Gérer les programmations » reste toujours affiché : dans la partie Poêle, ou dans la section Programmation quand la partie Poêle est masquée.
 - **Options de l'intégration** : un bouton en haut de l'éditeur de la carte ouvre directement les options de l'intégration (fenêtres, présence, historique, planning de secours…), communes à toutes les cartes. Enregistrer la carte avant : l'éditeur se ferme.
 
-| Edilkamin Bild 9+ (défaut) | Dessin simple | Image personnelle | Éditeur |
-|---|---|---|---|
-| ![Bild 9+](docs/screenshots/image_bild9.png) | ![Dessin simple](docs/screenshots/image_dessin_simple.png) | ![Image personnelle](docs/screenshots/image_personnelle.png) | ![Éditeur](docs/screenshots/editeur.png) |
+<img src="docs/screenshots/editeur.png" alt="Éditeur" width="360">
 
+#### Programmations
+
+- **Gérer les programmations** ouvre le menu : liste, modification, création et suppression.
 - Les étiquettes d'une programmation (Puissance, V1, V2, Stand-by, Silence) changent la valeur à chaque appui.
 - **Classement** : dans le menu des programmations, les flèches ▲ ▼ changent l'ordre (la plus haute l'emporte en cas de chevauchement).
 - **Heures** : début et fin se règlent avec − / + par pas de 5 minutes (appui long pour défiler) ; un appui sur l'heure ouvre le sélecteur.
-- **Tuile Granulés** : un appui ouvre le menu du réservoir, avec le bouton de remplissage (« J'ai versé 1 sac » avec Suivi Stock Pellet).
-- **Tuile Allumages** : un appui ouvre les allumages des 3 derniers jours, regroupés par jour.
-
-![Allumages](docs/screenshots/menu_allumages.png)
-
-| Classement | Heures | Granulés |
-|---|---|---|
-| ![Classement](docs/screenshots/menu_liste.png) | ![Heures](docs/screenshots/menu_edition.png) | ![Granulés](docs/screenshots/menu_granules.png) |
-- **Gérer les programmations** ouvre le menu : liste, modification, création et suppression.
 
 | Programmations | Modification | Nouvelle |
 |---|---|---|
 | ![Liste](docs/screenshots/menu_liste.png) | ![Modification](docs/screenshots/menu_edition.png) | ![Nouvelle](docs/screenshots/menu_nouvelle.png) |
 
-Options de la carte :
+#### Suivi
+
+- **Tuile Allumages** : un appui ouvre les allumages des 3 derniers jours, regroupés par jour.
+
+![Allumages](docs/screenshots/menu_allumages.png)
+
+- **Tuile Granulés** : un appui ouvre le menu du réservoir, avec le bouton de remplissage (« J'ai versé 1 sac » avec Suivi Stock Pellet).
+
+![Granulés](docs/screenshots/menu_granules.png)
+
+#### Options de la carte
 
 | Option | Défaut | Rôle |
 |---|---|---|
@@ -175,7 +203,9 @@ Options de la carte :
 | `show_graph` | `true` | Graphique de la partie Suivi |
 | `status`, `fan2`, `relax`, `standby`, `real_power`, `real_fan1`, `real_fan2`, `pellet`, `ignitions`, `alarm`, `alarm_label` | détection | Entités du firmware, si la détection automatique ne les trouve pas |
 
-### Entités
+### Référence
+
+#### Entités
 
 Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
 
@@ -215,7 +245,7 @@ Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
 | `switch.poele_soiree_silence` | Relax |
 | `select.poele_soiree_si_absent` | Programmation appliquée quand la maison est vide (si une présence est configurée) |
 
-### Services
+#### Services
 
 | Service | Rôle |
 |---|---|
@@ -226,13 +256,13 @@ Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
 | `edilkamin_control.reservoir_filled` | Remet le compteur du réservoir à zéro |
 | `edilkamin_control.publish_schedule` | Envoie tout de suite le planning de secours |
 
-### Planning de secours (MQTT)
+#### Planning de secours (MQTT)
 
 Message retenu, QoS 1 : `{"v":2,"p":[{"a":1,"d":390,"f":510,"c":205,"m":0,"pu":0,"v1":6,"v2":6,"r":0,"j":31}, …]}`
 
 `a` active · `d`/`f` minutes depuis minuit · `c` consigne × 10 · `m` 1 = Stand-by · `pu` 0 = Auto, 1 à 5 · `v1` 1 à 5, 6 = Auto · `v2` 0 = arrêt, 1 à 5, 6 = Auto · `r` silence · `j` jours (bit 0 = lundi). Le format `v1` envoie exactement 5 plages sans `r` ni `j`.
 
-### Limites connues
+#### Limites connues
 
 - Le format `v2` du planning de secours demande le firmware Edilkamin Control 2026.11.1 ou plus récent ; avec akoonet-13, choisir `v1`.
 - Les programmations existantes faites avec des entrées (input_*) ne sont pas importées automatiquement : utiliser le service `add_profile`.
@@ -249,28 +279,41 @@ It does not touch the stove itself: everything goes through the entities publish
 
 ![Card](docs/screenshots/carte.png)
 
+**Contents**: [Features](#features) · [Requirements](#requirements) · [Installation](#installation-1) · [Card](#card) · [Reference](#reference)
+
 ### Features
+
+#### Schedules
 
 - **Schedules** (up to 10): name, start, end (start = end: all day, slots may cross midnight), days of the week, setpoint, Run or Standby, power (Auto or P1 to P5), fan 1, fan 2, silent (Relax). When schedules overlap, the one highest in the list wins.
 - **Turning on and off**: leaving no schedule for a schedule, re-enabling scheduling, forcing, and a slot start or end while the stove is off and the schedule is in Run, or in Standby with the temperature below the setpoint. Outside any schedule the stove is turned off (once, on the change).
+- **Forced schedule**: one schedule applied right away, until the next slot start or end.
+- **If away**: with a presence entity (alarm, person, zone, switch…), each schedule can be replaced by another one when the house is empty.
+
+#### Settings changed by hand
+
 - **Setpoint override**: a setpoint changed by hand is kept until the next schedule change (slot start or end, another schedule applied, forcing, leaving the schedules) or a change of the current setpoint.
 - **Manual settings**: fans, power, standby or on/off changed by hand (card, dashboard, app, voice assistant or remote) are no longer sent until the next slot start or end. “Give back” button. A power level the stove resets to “Auto” by itself outside the run phase (off, ignition, shutdown), and values read back when the ESP32 reconnects, are not counted as manual settings. The schedule's power is sent again as soon as the stove reaches the run phase.
 - **Manual silent mode**: Relax turned on by hand has priority until midnight.
-- **Forced schedule**: one schedule applied right away, until the next slot start or end.
-- **If away**: with a presence entity (alarm, person, zone, switch…), each schedule can be replaced by another one when the house is empty.
-- **Open windows**: when a watched window or door stays open longer than the delay before cut-off (0 to 60 min), the stove is turned off if it is on and the schedule no longer turns it on. Once all windows are closed, the schedule resumes after the delay before resuming (0 to 60 min). When the schedule is disabled, the stove is turned back on if it was on before. Turning the stove on by hand with a window open lifts the cut-off until the windows are closed. The card shows a banner while waiting and during the cut-off. If Home Assistant is down during the cut-off, the ESP32 fallback schedule may turn the stove back on.
 
-  ![Open windows](docs/screenshots/fenetres_ouvertes.png)
+#### Open windows
+
+When a watched window or door stays open longer than the delay before cut-off (0 to 60 min), the stove is turned off if it is on and the schedule no longer turns it on. Once all windows are closed, the schedule resumes after the delay before resuming (0 to 60 min). When the schedule is disabled, the stove is turned back on if it was on before. Turning the stove on by hand with a window open lifts the cut-off until the windows are closed. The card shows a banner while waiting and during the cut-off. If Home Assistant is down during the cut-off, the ESP32 fallback schedule may turn the stove back on.
+
+![Open windows](docs/screenshots/fenetres_ouvertes.png)
+
+#### Reliability
 
 - **Check**: 4 minutes after a slot change, what the stove reports is compared with the schedule and lost commands are sent once more (written to the logbook). After each ignition order from the schedule, if the stove is still off 4 minutes later (and below the setpoint in Standby), the order is sent again, at most twice.
 - **ESP32 back online**: if something changed during an outage, everything is sent again 1 minute after it comes back.
 - **Fallback schedule**: published over MQTT (retained) on every change.
+- **Observe mode**: the integration computes everything but sends nothing to the stove, nor the fallback schedule to the ESP32; commands are written to the logbook. Handy to run it next to existing automations before switching over.
+
+#### Pellets and ignitions
+
 - **Pellet hopper**: burn hours since refill, last and average hopper duration, estimated autonomy, alert threshold, reserve reported by the stove. Everything is grouped in the menu of the card's Pellets tile. A hopper follow-up already kept by an automation is imported once at first start, when found: `sensor.…poele…heures_depuis_remplissage`, `input_text.…poele…durees_reservoirs`, `input_number.…poele…dernier_chargement` and `input_number.…poele…seuil_alerte_reservoir` (the import is written to the log).
 - **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (optional, when installed): the “Hopper refilled” button logs the consumption in Suivi Stock Pellet, a consumption logged in Suivi Stock Pellet resets the hopper counter, and the stock autonomy is computed.
 - **Ignition history**: ignitions of the last 3 days (start, stop, duration, total and average), from the stove ignition counter. Shown by the card's Ignitions tile. A history already kept by an automation (« dd/mm hh:mm ; … » lists in `input_text`) is imported and followed.
-- **Observe mode**: the integration computes everything but sends nothing to the stove, nor the fallback schedule to the ESP32; commands are written to the logbook. Handy to run it next to existing automations before switching over.
-- **Lovelace card** included and loaded automatically, with a visual editor and a choice of stove picture (Edilkamin Bild 9+ by default, simple drawing or your own picture).
-- **ESP32 firmware** installed in one click from the browser, then updated remotely from Home Assistant; password-protected status web page.
 
 ### Requirements
 
@@ -278,17 +321,25 @@ It does not touch the stove itself: everything goes through the entities publish
 - A [Wemos D1 Mini ESP32](https://amzn.eu/d/00g3VR9p) (or equivalent) next to the stove, running the Edilkamin Control firmware (see below). The original [netmb/Edilkamin_BT](https://github.com/netmb/Edilkamin_BT) firmware is also supported (untested), without fallback schedule or fan 2.
 - An MQTT broker (for example Home Assistant's Mosquitto app) and the MQTT integration: the ESP32 publishes all stove entities over MQTT (thermostat, status, Standby; fan 2, Relax and Chrono when available).
 
-### ESP32 firmware
+### Installation
+
+Three steps: the ESP32 firmware, the integration, then its configuration.
+
+#### 1. ESP32 firmware
 
 **One-click install and update** from the browser (Chrome or Edge on a computer, ESP32 plugged over USB):
 
 **👉 [https://akoonet-homeassistant.github.io/edilkamin_control/webflash/](https://akoonet-homeassistant.github.io/edilkamin_control/webflash/)**
 
+![Firmware install](docs/screenshots/installation_firmware.png)
+
 - **First install**: hold the ESP32 **BOOT** button while plugging the USB cable, click **Install**, answer **yes** to “Erase device”. Then join the `Edilkamin_BT_AP` Wi-Fi to enter your home Wi-Fi and MQTT broker, and put the stove in Bluetooth pairing mode. The “Edilkamin” device shows up in Home Assistant (MQTT).
-- **Update**: since firmware 2026.11.2, the firmware updates **remotely** from Home Assistant: **Settings → Updates → ESP32 firmware → Install** (integration entity). The ESP32 downloads the file, checks its checksum (MD5) and restarts; on failure it stays on the previous version. A `.bin` file can also be sent from the ESP32 web page.
-- **Upgrading to 2026.11.2**: this release changes the memory layout (two program slots). Install it **one last time over USB**, answering **no** to “Erase device”: Wi-Fi is kept. On restart, the ESP32 opens the `Edilkamin_BT_AP` Wi-Fi: join it, open **Setup** and enter only the MQTT broker again. The fallback schedule is sent again by the integration. Settings (MQTT, web page password) are now stored like Wi-Fi and survive future updates.
 - **Web page**: `http://<ESP32 address>/` shows the stove and ESP32 status (user `admin`). It stays disabled until a password is set (“Web page password” entity of the Edilkamin device; `-` disables it). The page uses plain HTTP: for the local network. The IP address is published over MQTT (“ESP32 IP address” entity, “Visit” link on the device).
 - **Bluetooth**: the stove accepts only one Bluetooth connection at a time, shared with the remote and the Edilkamin app. Since firmware 2026.11.3, the ESP32 reads the temperature first and disconnects as soon as all values are read. The “Bluetooth occupancy” (% of time over 15 min) and “Bluetooth connection duration” sensors of the Edilkamin device let you follow it.
+- **Update**: since firmware 2026.11.2, the firmware updates **remotely** from Home Assistant: **Settings → Updates → ESP32 firmware → Install** (integration entity). The ESP32 downloads the file, checks its checksum (MD5) and restarts; on failure it stays on the previous version. A `.bin` file can also be sent from the ESP32 web page.
+- **Upgrading to 2026.11.2**: this release changes the memory layout (two program slots). Install it **one last time over USB**, answering **no** to “Erase device”: Wi-Fi is kept. On restart, the ESP32 opens the `Edilkamin_BT_AP` Wi-Fi: join it, open **Setup** and enter only the MQTT broker again. The fallback schedule is sent again by the integration. Settings (MQTT, web page password) are now stored like Wi-Fi and survive future updates.
+
+![ESP32 web page](docs/screenshots/page_web_esp32.png)
 
 **Without the install page** (manual install with [esptool](https://docs.espressif.com/projects/esptool/)), using the files of the [`webflash`](webflash) folder:
 
@@ -309,7 +360,7 @@ esptool.py --chip esp32 write_flash 0x1000 bootloader.bin 0x8000 partitions.bin 
 esptool.py --chip esp32 write_flash 0x10000 firmware.bin
 ```
 
-### Installation
+#### 2. Integration (HACS)
 
 Edilkamin Control is part of the **HACS default** repositories: no custom repository needed.
 
@@ -320,7 +371,7 @@ Edilkamin Control is part of the **HACS default** repositories: no custom reposi
 
 If you had added the repository to HACS **Custom repositories**, you can remove that entry: the installed integration and its settings are kept.
 
-### Configuration
+#### 3. Configuration
 
 | | |
 |---|---|
@@ -330,6 +381,8 @@ If you had added the repository to HACS **Custom repositories**, you can remove 
 2. Check the entities found on the same device and choose the options:
    - **Stove ignition counter**: found automatically; used for the ignition history.
    - **Existing ignition / stop history** (`input_text`, optional): « dd/mm hh:mm » lists kept by an automation, newest first (« - » = running, « ? » = missed stop). Found automatically (`input_text.poele_…allumages` and `…arrets`); they feed the Ignitions tile as soon as the integration is installed.
+
+     ![History options](docs/screenshots/options_historique.png)
    - **Presence**: empty house when the alarm is armed away or vacation, the person is away, the zone is empty or the switch is off.
    - **Watched windows and doors** (optional, binary sensors of the window, door, opening or garage door type), **delay before cut-off** and **delay before resuming** (0 to 60 min each).
 
@@ -352,19 +405,49 @@ type: custom:edilkamin-control-card
 climate: climate.stove
 ```
 
+#### Display
+
+| Light theme | Dark theme |
+|---|---|
+| ![Card](docs/screenshots/carte.png) | ![Dark card](docs/screenshots/carte_sombre.png) |
+
 - **Thermostat**: dial like Home Assistant's thermostat control (current temperature, arc up to the setpoint, Heat / Off, − / + buttons).
 - **Thermometer**: a temperature sensor chosen in the editor is shown under the title (“Living room: 21.6°C”); a tap opens its details.
 - **Stove picture**: chosen in the card's visual editor. Flames, fans and display follow the stove state.
+
+| Edilkamin Bild 9+ (default) | Simple drawing | Own picture |
+|---|---|---|
+| ![Bild 9+](docs/screenshots/image_bild9.png) | ![Simple drawing](docs/screenshots/image_dessin_simple.png) | ![Own picture](docs/screenshots/image_personnelle.png) |
+
+#### Editor
+
 - **Displayed parts**: at the top of the editor, four switches show or hide the Stove, Manual settings, Schedules (schedule list) and Tracking parts. The “Manage schedules” button is always shown: in the Stove part, or in the Schedules section when the Stove part is hidden.
 - **Integration options**: a button at the top of the card editor opens the integration options directly (windows, presence, history, fallback schedule…), shared by all cards. Save the card first: the editor closes.
+
+<img src="docs/screenshots/editeur.png" alt="Editor" width="360">
+
+#### Schedules
+
+- **Manage schedules** opens the menu: list, edit, create and delete.
 - The tags of a schedule (Power, V1, V2, Standby, Silent) change the value on each tap.
 - **Ordering**: in the schedule menu, the ▲ ▼ arrows change the order (the highest wins when schedules overlap).
 - **Times**: start and end are set with − / + in 5-minute steps (hold to scroll); tapping the time opens the picker.
-- **Pellets tile**: a tap opens the hopper menu, with the refill button (“I poured 1 bag” with Suivi Stock Pellet).
-- **Ignitions tile**: a tap opens the ignitions of the last 3 days, grouped by day.
-- **Manage schedules** opens the menu: list, edit, create and delete.
 
-Card options:
+| Schedules | Edit | New |
+|---|---|---|
+| ![List](docs/screenshots/menu_liste.png) | ![Edit](docs/screenshots/menu_edition.png) | ![New](docs/screenshots/menu_nouvelle.png) |
+
+#### Tracking
+
+- **Ignitions tile**: a tap opens the ignitions of the last 3 days, grouped by day.
+
+![Ignitions](docs/screenshots/menu_allumages.png)
+
+- **Pellets tile**: a tap opens the hopper menu, with the refill button (“I poured 1 bag” with Suivi Stock Pellet).
+
+![Pellets](docs/screenshots/menu_granules.png)
+
+#### Card options
 
 | Option | Default | Purpose |
 |---|---|---|
@@ -380,7 +463,9 @@ Card options:
 | `show_graph` | `true` | Graph of the Tracking part |
 | `status`, `fan2`, `relax`, `standby`, `real_power`, `real_fan1`, `real_fan2`, `pellet`, `ignitions`, `alarm`, `alarm_label` | detection | Firmware entities, when automatic detection does not find them |
 
-### Entities
+### Reference
+
+#### Entities
 
 The entity IDs depend on the entry name and on the Home Assistant language (shown here for an English installation and an entry named “Stove”).
 
@@ -420,7 +505,7 @@ The entity IDs depend on the entry name and on the Home Assistant language (show
 | `switch.stove_evening_silent` | Relax |
 | `select.stove_evening_if_away` | Schedule applied when the house is empty (when presence is configured) |
 
-### Services
+#### Services
 
 | Service | Purpose |
 |---|---|
@@ -431,13 +516,13 @@ The entity IDs depend on the entry name and on the Home Assistant language (show
 | `edilkamin_control.reservoir_filled` | Resets the hopper counter |
 | `edilkamin_control.publish_schedule` | Sends the fallback schedule now |
 
-### Fallback schedule (MQTT)
+#### Fallback schedule (MQTT)
 
 Retained message, QoS 1: `{"v":2,"p":[{"a":1,"d":390,"f":510,"c":205,"m":0,"pu":0,"v1":6,"v2":6,"r":0,"j":31}, …]}`
 
 `a` enabled · `d`/`f` minutes since midnight · `c` setpoint × 10 · `m` 1 = Standby · `pu` 0 = Auto, 1 to 5 · `v1` 1 to 5, 6 = Auto · `v2` 0 = off, 1 to 5, 6 = Auto · `r` silent · `j` days (bit 0 = Monday). The `v1` format sends exactly 5 slots without `r` or `j`.
 
-### Known limits
+#### Known limits
 
 - The `v2` fallback schedule format needs the Edilkamin Control firmware 2026.11.1 or newer; with akoonet-13, choose `v1`.
 - Existing schedules built with helpers (input_*) are not imported automatically: use the `add_profile` service.

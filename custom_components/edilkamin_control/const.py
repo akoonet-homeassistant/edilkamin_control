@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "edilkamin_control"
-VERSION = "2026.11.16"
+VERSION = "2026.11.17"
 
 # Clés de configuration (entrée de configuration / options)
 CONF_CLIMATE = "climate"

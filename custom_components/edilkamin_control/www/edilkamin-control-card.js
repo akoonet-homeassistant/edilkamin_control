@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.16";
+const ECC_VERSION = "2026.11.17";
 
 // Échappement HTML de toute valeur venant de Home Assistant ou de la configuration
 // (noms de programmation, états, options, libellés d'alarme, noms d'entités…)
@@ -917,7 +917,12 @@ class EdilkaminControlCard extends HTMLElement {
   /* Menu « Réservoir de granulés » : mêmes informations que le menu du poêle */
   _pelletSheet(overlay) {
     const r = this._resolved, st = (k) => (r[k] ? this._hass.states[r[k]] : undefined);
-    const hrs = (v) => (v === undefined || v === null || v === "" || isNaN(Number(v)) ? "—" : `${this._fmt(v, Number(v) >= 100 ? 0 : 1)} h`);
+    // Durées en heures et minutes (0,8 h → 48 min, 13,6 h → 13 h 36), comme l'historique des allumages
+    const hrs = (v) => {
+      if (v === undefined || v === null || v === "" || isNaN(Number(v))) return "—";
+      const m = Math.round(Number(v) * 60);
+      return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}` : `${m} min`;
+    };
     const avgS = st("res_avg"), durations = avgS?.attributes?.durations || [];
     const load = avgS?.attributes?.last_load_kg;
     const stockS = st("stock_auto");
@@ -932,7 +937,7 @@ class EdilkaminControlCard extends HTMLElement {
       const a = st("res_alert");
       row("mdi:timer-alert-outline", this._t("alert_after"), "", `<div class="pc">
         <button class="round sm" data-act="num-" data-entity="${eccE(r.res_alert)}"><ha-icon icon="mdi:minus"></ha-icon></button>
-        <span>${a ? (Number(a.state) ? this._fmt(a.state) + " h" : "—") : "—"}</span>
+        <span>${a ? (Number(a.state) ? hrs(a.state) : "—") : "—"}</span>
         <button class="round sm" data-act="num+" data-entity="${eccE(r.res_alert)}"><ha-icon icon="mdi:plus"></ha-icon></button></div>`);
     }
     if (r.pellet) row("mdi:grain", this._t("stove_reserve"), this._v("pellet") === "Empty" ? `<span class="red">${this._t("reserve_low")}</span>` : this._t("ok"));
