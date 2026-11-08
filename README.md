@@ -135,6 +135,7 @@ climate: climate.poele
 - **Thermostat** : cadran comme la commande de thermostat de Home Assistant (température actuelle, arc jusqu'à la consigne, Chauffage / Éteint, boutons − / +).
 - **Thermomètre** : un capteur de température choisi dans l'éditeur s'affiche sous le titre (« Salon : 21,6°C ») ; un appui ouvre sa fiche.
 - **Image du poêle** : choisie dans l'éditeur visuel de la carte. Les flammes, les ventilateurs et l'écran s'animent selon l'état du poêle.
+- **Parties affichées** : en haut de l'éditeur, quatre interrupteurs affichent ou masquent les parties Poêle, Réglages manuels, Programmation (liste des programmations) et Suivi. Le bouton « Gérer les programmations » reste toujours affiché : dans la partie Poêle, ou dans la section Programmation quand la partie Poêle est masquée.
 - **Options de l'intégration** : un bouton en haut de l'éditeur de la carte ouvre directement les options de l'intégration (fenêtres, présence, historique, planning de secours…), communes à toutes les cartes. Enregistrer la carte avant : l'éditeur se ferme.
 
 | Edilkamin Bild 9+ (défaut) | Dessin simple | Image personnelle | Éditeur |
@@ -163,14 +164,15 @@ Options de la carte :
 | Option | Défaut | Rôle |
 |---|---|---|
 | `climate` | obligatoire | Thermostat du poêle |
-| `mode` | `full` | `planning` : affiche seulement le menu des programmations (pour une vue dédiée) |
+| `mode` | `full` | `planning` : affiche seulement le menu des programmations (pour une vue dédiée, YAML seulement) |
 | `title` | Poêle | Titre |
 | `temperature_entity` | — | Thermomètre affiché sous le titre (capteur de température) |
 | `temperature_name` | nom de l'entité | Nom affiché devant la température du thermomètre |
 | `image` | `bild9` | `bild9` (Edilkamin Bild 9+), `generic` (dessin simple) ou adresse d'une image (ex. `/local/poele.svg`) |
 | `image_window` | — | Vitre d'une image personnelle, en % d'un cadre 140 × 212 : `x`, `y`, `width`, `height` |
 | `image_calibration` | `false` | Affiche le cadre de la vitre pour la régler |
-| `show_header`, `show_modes`, `show_planning`, `show_tracking`, `show_graph` | `true` | Sections affichées |
+| `show_header`, `show_modes`, `show_planning`, `show_tracking` | `true` | Parties affichées : Poêle, Réglages manuels, Programmation (liste), Suivi ; réglables dans l'éditeur |
+| `show_graph` | `true` | Graphique de la partie Suivi |
 | `status`, `fan2`, `relax`, `standby`, `real_power`, `real_fan1`, `real_fan2`, `pellet`, `ignitions`, `alarm`, `alarm_label` | détection | Entités du firmware, si la détection automatique ne les trouve pas |
 
 ### Entités
@@ -353,6 +355,7 @@ climate: climate.stove
 - **Thermostat**: dial like Home Assistant's thermostat control (current temperature, arc up to the setpoint, Heat / Off, − / + buttons).
 - **Thermometer**: a temperature sensor chosen in the editor is shown under the title (“Living room: 21.6°C”); a tap opens its details.
 - **Stove picture**: chosen in the card's visual editor. Flames, fans and display follow the stove state.
+- **Displayed parts**: at the top of the editor, four switches show or hide the Stove, Manual settings, Schedules (schedule list) and Tracking parts. The “Manage schedules” button is always shown: in the Stove part, or in the Schedules section when the Stove part is hidden.
 - **Integration options**: a button at the top of the card editor opens the integration options directly (windows, presence, history, fallback schedule…), shared by all cards. Save the card first: the editor closes.
 - The tags of a schedule (Power, V1, V2, Standby, Silent) change the value on each tap.
 - **Ordering**: in the schedule menu, the ▲ ▼ arrows change the order (the highest wins when schedules overlap).
@@ -366,14 +369,15 @@ Card options:
 | Option | Default | Purpose |
 |---|---|---|
 | `climate` | required | Stove thermostat |
-| `mode` | `full` | `planning`: shows only the schedule menu (for a dedicated view) |
+| `mode` | `full` | `planning`: shows only the schedule menu (for a dedicated view, YAML only) |
 | `title` | Stove | Title |
 | `temperature_entity` | — | Thermometer shown under the title (temperature sensor) |
 | `temperature_name` | entity name | Name shown before the thermometer's temperature |
 | `image` | `bild9` | `bild9` (Edilkamin Bild 9+), `generic` (simple drawing) or a picture URL (e.g. `/local/stove.svg`) |
 | `image_window` | — | Glass of your own picture, in % of a 140 × 212 frame: `x`, `y`, `width`, `height` |
 | `image_calibration` | `false` | Shows the glass frame to adjust it |
-| `show_header`, `show_modes`, `show_planning`, `show_tracking`, `show_graph` | `true` | Displayed sections |
+| `show_header`, `show_modes`, `show_planning`, `show_tracking` | `true` | Displayed parts: Stove, Manual settings, Schedules (list), Tracking; set in the editor |
+| `show_graph` | `true` | Graph of the Tracking part |
 | `status`, `fan2`, `relax`, `standby`, `real_power`, `real_fan1`, `real_fan2`, `pellet`, `ignitions`, `alarm`, `alarm_label` | detection | Firmware entities, when automatic detection does not find them |
 
 ### Entities

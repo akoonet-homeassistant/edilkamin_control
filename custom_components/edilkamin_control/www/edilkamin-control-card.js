@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.15";
+const ECC_VERSION = "2026.11.16";
 
 // Échappement HTML de toute valeur venant de Home Assistant ou de la configuration
 // (noms de programmation, états, options, libellés d'alarme, noms d'entités…)
@@ -283,7 +283,8 @@ class EdilkaminControlCard extends HTMLElement {
     }
     if (c.show_header) parts.push(this._header());
     if (c.show_modes) parts.push(this._modes());
-    if (c.show_planning && (this._resolved.planning || this._resolved.profiles.length)) parts.push(this._planning());
+    // Programmation : la liste suit show_planning ; bandeaux et « Gérer les programmations » restent toujours
+    if (this._resolved.planning || this._resolved.profiles.length) parts.push(this._planning(c.show_planning !== false));
     if (c.show_tracking) parts.push(this._tracking());
     const ov = this._page !== null ? `<div class="overlay" data-act="close-bg"><div class="sheet">${this._manager(true)}</div></div>` : "";
     this.shadowRoot.innerHTML = `<style>${ECC_CSS}</style><ha-card>${parts.join('<div class="sep"></div>')}</ha-card>${ov}`;
@@ -354,9 +355,11 @@ class EdilkaminControlCard extends HTMLElement {
         <ha-icon icon="${on ? "mdi:fire" : "mdi:fire-off"}"></ha-icon>
         <span>${conf ? this._t(on ? "confirm_off" : "confirm_on") : this._t(on ? "lit" : "unlit")}</span>
       </button>
-      <button class="btn" data-act="more" data-entity="${eccE(this._resolved.climate)}">
+      ${this._resolved.planning || this._resolved.profiles.length ? `<button class="btn" data-act="page" data-page="list">
+        <ha-icon icon="mdi:calendar-edit"></ha-icon><span>${this._t("manage")}</span>
+      </button>` : `<button class="btn" data-act="more" data-entity="${eccE(this._resolved.climate)}">
         <ha-icon icon="mdi:tune-variant"></ha-icon><span>${this._t("power")} ${pr === "Auto" ? this._t("power_auto") : eccE(pr.slice(-1))}</span>
-      </button>
+      </button>`}
     </div>`;
   }
 
@@ -587,7 +590,7 @@ class EdilkaminControlCard extends HTMLElement {
     return best ? best.t : null;
   }
 
-  _planning() {
+  _planning(list = true) {
     const r = this._resolved, out = [];
     const planning = this._s("planning");
     out.push(`<div class="sec-title">${this._t("planning")}
@@ -626,8 +629,10 @@ class EdilkaminControlCard extends HTMLElement {
         <button data-act="off" data-entity="${eccE(ents)}">${this._t("give_back")}</button></div>`);
     }
     const cur = this._v("current_profile");
-    out.push(`<div class="profiles">${r.profiles.map((p) => this._profileRow(p, cur)).join("")}</div>
-      <button class="add" data-act="page" data-page="list"><ha-icon icon="mdi:calendar-edit"></ha-icon><span>${this._t("manage")}</span></button>`);
+    // « Gérer les programmations » : dans la partie Poêle quand elle est affichée, sinon ici
+    const manage = this._config.show_header === false;
+    out.push(`${list ? `<div class="profiles">${r.profiles.map((p) => this._profileRow(p, cur)).join("")}</div>` : ""}
+      ${manage ? `<button class="add" data-act="page" data-page="list"><ha-icon icon="mdi:calendar-edit"></ha-icon><span>${this._t("manage")}</span></button>` : ""}`);
     return out.join("");
   }
 
@@ -1327,10 +1332,18 @@ const ECC_ED_I18N = {
   fr: { climate: "Thermostat du poêle", title: "Titre", image_mode: "Image du poêle", bild9: "Edilkamin Bild 9+", builtin: "Dessin simple", custom: "Image personnelle",
     image: "Adresse de l'image (ex. /local/poele/poele.svg)", win_x: "Vitre : gauche (%)", win_y: "Vitre : haut (%)", win_w: "Vitre : largeur (%)",
     win_h: "Vitre : hauteur (%)", image_calibration: "Afficher le cadre de la vitre (réglage)", mode: "Affichage", full: "Carte complète", planning: "Menu des programmations seul", temperature_entity: "Thermomètre (affiché sous le titre)", temperature_name: "Nom du thermomètre (vide = nom de l'entité)",
+    show_header: "Poêle (image, thermostat, allumage et « Gérer les programmations »)",
+    show_modes: "Réglages manuels (puissance, ventilations, stand-by, silence)",
+    show_planning: "Programmation (liste des programmations)",
+    show_tracking: "Suivi (graphique, allumages, granulés, alarme)",
     open_options: "Options de l'intégration", open_options_hint: "Fenêtres, présence, historique, planning de secours… Réglages communs à toutes les cartes. Pensez à enregistrer la carte avant." },
   en: { climate: "Stove thermostat", title: "Title", image_mode: "Stove picture", bild9: "Edilkamin Bild 9+", builtin: "Simple drawing", custom: "Own picture",
     image: "Picture URL (e.g. /local/stove/stove.svg)", win_x: "Glass: left (%)", win_y: "Glass: top (%)", win_w: "Glass: width (%)",
     win_h: "Glass: height (%)", image_calibration: "Show the glass frame (calibration)", mode: "Display", full: "Full card", planning: "Schedule menu only", temperature_entity: "Thermometer (shown under the title)", temperature_name: "Thermometer name (empty = entity name)",
+    show_header: "Stove (picture, thermostat, on/off and “Manage schedules”)",
+    show_modes: "Manual settings (power, fans, standby, silent)",
+    show_planning: "Schedules (schedule list)",
+    show_tracking: "Tracking (graph, ignitions, pellets, alarm)",
     open_options: "Integration options", open_options_hint: "Windows, presence, history, fallback schedule… Settings shared by all cards. Save the card first." },
 };
 
@@ -1345,7 +1358,8 @@ class EdilkaminControlCardEditor extends HTMLElement {
     const im = c.image || "bild9";
     const kind = im === "default" ? "generic" : (ECC_IMAGES[im] || im === "generic") ? im : "custom";
     const custom = kind === "custom";
-    return { climate: c.climate, title: c.title, temperature_entity: c.temperature_entity, temperature_name: c.temperature_name, mode: c.mode || "full", image_mode: kind,
+    return { climate: c.climate, title: c.title, temperature_entity: c.temperature_entity, temperature_name: c.temperature_name, image_mode: kind,
+      show_header: c.show_header !== false, show_modes: c.show_modes !== false, show_planning: c.show_planning !== false, show_tracking: c.show_tracking !== false,
       image: custom ? c.image : "", win_x: w.x ?? 25, win_y: w.y ?? 25, win_w: w.width ?? 50, win_h: w.height ?? 40,
       image_calibration: !!c.image_calibration };
   }
@@ -1353,11 +1367,14 @@ class EdilkaminControlCardEditor extends HTMLElement {
   _schema(d) {
     const num = (name) => ({ name, selector: { number: { min: 0, max: 100, step: 0.1, mode: "box" } } });
     const s = [
+      { name: "show_header", selector: { boolean: {} } },
+      { name: "show_modes", selector: { boolean: {} } },
+      { name: "show_planning", selector: { boolean: {} } },
+      { name: "show_tracking", selector: { boolean: {} } },
       { name: "climate", required: true, selector: { entity: { domain: "climate" } } },
       { name: "title", selector: { text: {} } },
       { name: "temperature_entity", selector: { entity: { filter: { domain: "sensor", device_class: "temperature" } } } },
       ...(d.temperature_entity ? [{ name: "temperature_name", selector: { text: {} } }] : []),
-      { name: "mode", selector: { select: { mode: "dropdown", options: [{ value: "full", label: this._t("full") }, { value: "planning", label: this._t("planning") }] } } },
       { name: "image_mode", selector: { select: { mode: "dropdown", options: [{ value: "bild9", label: this._t("bild9") }, { value: "generic", label: this._t("builtin") }, { value: "custom", label: this._t("custom") }] } } },
     ];
     if (d.image_mode === "custom") {
@@ -1425,7 +1442,9 @@ class EdilkaminControlCardEditor extends HTMLElement {
 
   _changed(v) {
     const c = { ...this._config, climate: v.climate };
-    for (const k of ["title", "mode", "temperature_entity", "temperature_name"]) { if (v[k] && !(k === "mode" && v[k] === "full")) c[k] = v[k]; else delete c[k]; }
+    for (const k of ["title", "temperature_entity", "temperature_name"]) { if (v[k]) c[k] = v[k]; else delete c[k]; }
+    // Sections : enregistrées seulement quand elles sont masquées (affichées par défaut)
+    for (const k of ["show_header", "show_modes", "show_planning", "show_tracking"]) { if (v[k] === false) c[k] = false; else delete c[k]; }
     if (v.image_mode === "custom") {
       c.image = v.image || "/local/poele.svg";
       c.image_window = { x: Number(v.win_x), y: Number(v.win_y), width: Number(v.win_w), height: Number(v.win_h) };
