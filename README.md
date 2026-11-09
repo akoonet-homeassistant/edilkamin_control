@@ -170,7 +170,7 @@ climate: climate.poele
 #### Programmations
 
 - **Gérer les programmations** ouvre le menu : liste, modification, création et suppression.
-- **Replier / déployer** : un appui sur le titre « Programmation » (flèche ▸ / ▾) replie la liste sur une ligne (programmation en cours et heure de fin). L'état est retenu sur chaque appareil.
+- **Replier / déployer** : un appui sur le titre « Programmation » (flèche ▸ / ▾) replie la liste sur la seule programmation en cours, affichée en entier (horaires, jours, consigne réglable, étiquettes) ; sans programmation en cours, l'heure du prochain changement s'affiche. L'état est retenu sur chaque appareil.
 - Les étiquettes d'une programmation (Puissance, V1, V2, Stand-by, Silence) changent la valeur à chaque appui.
 - **Classement** : dans le menu des programmations, les flèches ▲ ▼ changent l'ordre (la plus haute l'emporte en cas de chevauchement).
 - **Heures** : début et fin se règlent avec − / + par pas de 5 minutes (appui long pour défiler) ; un appui sur l'heure ouvre le sélecteur.
@@ -437,7 +437,7 @@ climate: climate.stove
 #### Schedules
 
 - **Manage schedules** opens the menu: list, edit, create and delete.
-- **Fold / unfold**: tapping the “Schedules” title (▸ / ▾ arrow) folds the list into one line (running schedule and its end time). The state is kept on each device.
+- **Fold / unfold**: tapping the “Schedules” title (▸ / ▾ arrow) folds the list down to the running schedule only, shown in full (times, days, adjustable setpoint, tags); with no schedule running, the next change time is shown. The state is kept on each device.
 - The tags of a schedule (Power, V1, V2, Standby, Silent) change the value on each tap.
 - **Ordering**: in the schedule menu, the ▲ ▼ arrows change the order (the highest wins when schedules overlap).
 - **Times**: start and end are set with − / + in 5-minute steps (hold to scroll); tapping the time opens the picker.

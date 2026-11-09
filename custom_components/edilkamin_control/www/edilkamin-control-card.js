@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.18";
+const ECC_VERSION = "2026.11.19";
 
 // Échappement HTML de toute valeur venant de Home Assistant ou de la configuration
 // (noms de programmation, états, options, libellés d'alarme, noms d'entités…)
@@ -31,7 +31,7 @@ const ECC_I18N = {
     profile: "Profil", mode_run: "Marche", mode_standby: "Stand-by", all_day: "toute la journée",
     tracking: "Suivi", last24: "24 dernières heures", ignitions: "Allumages",
     alarm_now: "Alarme en cours", none: "Aucune", alarm_title: "10 dernières alarmes", alarm_start: "Début", alarm_end: "Fin",
-    no_alarm: "Aucune alarme enregistrée depuis l’installation de l’historique des alarmes.", alarm_unknown: "Alarme", fold_until: "jusqu’à", no_current: "Aucune programmation en cours", pellets: "Granulés", pellets_ok: "OK", pellets_low: "Réserve",
+    no_alarm: "Aucune alarme enregistrée depuis l’installation de l’historique des alarmes.", alarm_unknown: "Alarme", fold_until: "jusqu’à", next_change: "prochain changement à", no_current: "Aucune programmation en cours", pellets: "Granulés", pellets_ok: "OK", pellets_low: "Réserve",
     temp: "Température", power_short: "Puiss.", exhaust: "Fumées",
     silence: "Silence", days: ["L", "M", "M", "J", "V", "S", "D"], every_day: "tous les jours", weekdays: "lun.–ven.", weekend: "sam.–dim.",
     add_profile: "Ajouter une programmation", del: "Supprimer", confirm_del: "Supprimer ?", close: "Fermer",
@@ -66,7 +66,7 @@ const ECC_I18N = {
     profile: "Profile", mode_run: "Run", mode_standby: "Standby", all_day: "all day",
     tracking: "Tracking", last24: "Last 24 hours", ignitions: "Ignitions",
     alarm_now: "Current alarm", none: "None", alarm_title: "Last 10 alarms", alarm_start: "Start", alarm_end: "End",
-    no_alarm: "No alarm recorded since the alarm history was installed.", alarm_unknown: "Alarm", fold_until: "until", no_current: "No schedule running", pellets: "Pellets", pellets_ok: "OK", pellets_low: "Low",
+    no_alarm: "No alarm recorded since the alarm history was installed.", alarm_unknown: "Alarm", fold_until: "until", next_change: "next change at", no_current: "No schedule running", pellets: "Pellets", pellets_ok: "OK", pellets_low: "Low",
     temp: "Temperature", power_short: "Power", exhaust: "Exhaust",
     silence: "Silent", days: ["M", "T", "W", "T", "F", "S", "S"], every_day: "every day", weekdays: "Mon–Fri", weekend: "Sat–Sun",
     add_profile: "Add a schedule", del: "Delete", confirm_del: "Delete?", close: "Close",
@@ -647,8 +647,11 @@ class EdilkaminControlCard extends HTMLElement {
     const manage = this._config.show_header === false;
     const curSt = this._s("current_profile"), nx = this._nextSlot();
     const curName = !curSt || ["Aucun", "none", "unknown", "unavailable", ""].includes(curSt.state) ? null : curSt.state;
-    const summary = `<div class="foldsum" data-act="fold"><ha-icon icon="mdi:calendar-clock"></ha-icon><span>${curName
-      ? `<b>${eccE(curName)}</b>${nx ? ` · ${this._t("fold_until")} ${eccE(nx)}` : ""}` : this._t("no_current")}</span></div>`;
+    // Repliée : la programmation en cours en entier (horaires, jours, consigne, étiquettes), comme dans la liste
+    const curN = this._curN(), curP = curName && r.profiles.find((p) => p.n === curN);
+    const summary = curP
+      ? `<div class="profiles">${this._profileRow(curP, cur)}</div>`
+      : `<div class="foldsum" data-act="fold"><ha-icon icon="mdi:calendar-clock"></ha-icon><span>${this._t("no_current")}${nx ? ` · ${this._t("next_change")} ${eccE(nx)}` : ""}</span></div>`;
     out.push(`${list ? (folded ? summary : `<div class="profiles">${r.profiles.map((p) => this._profileRow(p, cur)).join("")}</div>`) : ""}
       ${manage ? `<button class="add" data-act="page" data-page="list"><ha-icon icon="mdi:calendar-edit"></ha-icon><span>${this._t("manage")}</span></button>` : ""}`);
     return out.join("");
