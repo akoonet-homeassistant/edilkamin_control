@@ -3,7 +3,7 @@
 #define Helper_h
 
 #ifndef FW_VERSION
-#define FW_VERSION "2026.11.5" // version du firmware Edilkamin Control
+#define FW_VERSION "2026.11.6" // version du firmware Edilkamin Control
 #endif
 #include <Arduino.h>
 

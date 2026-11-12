@@ -1247,6 +1247,7 @@ void publishWebDiscovery() {
   otaState("pret", 0, "");
 }
 
+void mqttCallback(String topic, byte *message, unsigned int length); // 2026.11.6 : utilise par /cmd
 static const char WEB_PAGE[] PROGMEM = R"HTML(<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Poêle Edilkamin</title>
 <style>
@@ -1262,10 +1263,16 @@ h1{font-size:20px;margin:4px 0 2px}.top{display:flex;justify-content:space-betwe
 .card h2{font-size:14px;margin:10px 0 4px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 table{width:100%;border-collapse:collapse}td{padding:7px 0;border-top:1px solid var(--line)}td:last-child{text-align:right;font-weight:600}
 .slot td{vertical-align:top}.slot td:first-child{font-weight:600;white-space:nowrap;padding-right:10px}.slot .det{color:var(--sub);font-size:13px;font-weight:400}.slot.off td{opacity:.5}.slot.cur td:first-child{color:var(--acc)}
+.tcr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--line);flex-wrap:wrap}.tcr:first-child{border-top:0}
+.seg{display:flex;flex-wrap:wrap;gap:4px}.seg button,.pm{border:1px solid var(--line);background:var(--bg);color:var(--txt);border-radius:9px;padding:6px 10px;font:inherit;font-size:14px;cursor:pointer;min-width:38px}
+.seg button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}.pm{font-size:20px;width:44px;height:40px;padding:0}
+.big{border:0;border-radius:12px;padding:10px 18px;font:inherit;font-weight:600;color:#fff;cursor:pointer;background:var(--acc)}.big.stop{background:var(--sub)}.big.conf{background:var(--bad)}
+.cons{font-size:22px;font-weight:600;min-width:92px;text-align:center}
 .acc{color:var(--acc)}.ok{color:var(--ok)}.bad{color:var(--bad)}
 </style></head><body><main>
 <div class="top"><div><h1>Poêle Edilkamin</h1><div class="sub" id="maj">Chargement…</div></div><div class="sub" id="ver"></div></div>
 <div class="grid" id="tiles"></div>
+<div class="card"><h2>Télécommande</h2><div id="tc"></div><div class="sub" id="tcmsg" style="min-height:18px;padding:0 0 8px"></div></div>
 <div class="card"><h2>Poêle</h2><table id="poele"></table></div>
 <div class="card"><h2>Granulés et compteurs</h2><table id="compteurs"></table></div>
 <div class="card"><h2>ESP32</h2><table id="esp"></table></div>
@@ -1281,8 +1288,29 @@ const dur=s=>{s=Number(s)||0;const j=Math.floor(s/86400),h=Math.floor(s%86400/36
 const E=v=>String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
 const row=(l,v,c)=>v==null||v===""?"":`<tr><td>${E(l)}</td><td class="${E(c||"")}">${E(v)}</td></tr>`;
 const tile=(l,v,c)=>`<div class="tile"><span>${E(l)}</span><b class="${E(c||"")}">${E(v??"—")}</b></div>`;
+let S={},pendT=null,tT=null,offArm=0;
+async function cmd(t,v){const m=document.getElementById("tcmsg");m.textContent="Envoi…";
+ try{const r=await fetch("/cmd",{method:"POST",headers:{"X-ECC":"1","Content-Type":"application/x-www-form-urlencoded"},body:"t="+encodeURIComponent(t)+"&v="+encodeURIComponent(v)});
+ m.textContent=r.ok?"Ordre envoyé au poêle, confirmation à la prochaine lecture.":"Ordre refusé ("+r.status+")";}catch(e){m.textContent="ESP32 injoignable";}
+ setTimeout(maj,2000);setTimeout(maj,6000);}
+const seg=(t,cur,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button class="${v===cur?"on":""}" data-t="${E(t)}" data-v="${E(v)}">${E(l)}</button>`).join("")}</div>`;
+const LV=[["20%","1"],["40%","2"],["60%","3"],["80%","4"],["100%","5"],["Auto","Auto"]];
+function tc(d){S=d;const on=d.hvac_mode==="heat";const t=pendT!=null?pendT:Number(d.target_temperature);
+ document.getElementById("tc").innerHTML=
+ `<div class="tcr"><span>Marche</span><button class="big ${on?(offArm>Date.now()?"conf":"stop"):""}" id="onoff">${on?(offArm>Date.now()?"Confirmer l'arrêt":"Éteindre"):"Allumer"}</button></div>`+
+ `<div class="tcr"><span>Consigne</span><div style="display:flex;align-items:center;gap:6px"><button class="pm" data-d="-0.5">−</button><span class="cons">${E(isNaN(t)?"—":deg(t))}</span><button class="pm" data-d="0.5">+</button></div></div>`+
+ `<div class="tcr"><span>Puissance</span>${seg("preset_mode",d.preset_mode,[["Auto","Auto"],["Man. P1","P1"],["Man. P2","P2"],["Man. P3","P3"],["Man. P4","P4"],["Man. P5","P5"]])}</div>`+
+ `<div class="tcr"><span>Ventilation 1</span>${seg("fan_mode",d.fan_mode,LV)}</div>`+
+ (d.fan2_mode!=null?`<div class="tcr"><span>Ventilation 2</span>${seg("fan2_mode",d.fan2_mode,[["Arrêt","Arrêt"],...LV])}</div>`:"")+
+ `<div class="tcr"><span>Stand-by</span>${seg("standby",d.standby,[["OFF","Non"],["ON","Oui"]])}</div>`+
+ `<div class="tcr"><span>Silence (Relax)</span>${seg("relax",d.relax,[["OFF","Non"],["ON","Oui"]])}</div>`;}
+document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||!document.getElementById("tc").contains(b))return;
+ if(b.id==="onoff"){if(S.hvac_mode==="heat"){if(offArm>Date.now()){offArm=0;cmd("hvac_mode","off");}else{offArm=Date.now()+4000;setTimeout(()=>tc(S),4100);}}else cmd("hvac_mode","heat");tc(S);return;}
+ if(b.dataset.d){const base=pendT!=null?pendT:Number(S.target_temperature)||19;pendT=Math.min(30,Math.max(5,Math.round((base+Number(b.dataset.d))*2)/2));tc(S);
+  clearTimeout(tT);tT=setTimeout(()=>{const v=pendT;cmd("target_temperature",v.toFixed(1));setTimeout(()=>{pendT=null;},6500);},1200);return;}
+ if(b.dataset.t)cmd(b.dataset.t,b.dataset.v);});
 async function maj(){try{const r=await fetch("/api",{cache:"no-store"});if(!r.ok)throw 0;const d=await r.json(),g=d.diag||{};
-const st=d.status||"",alarm=d.alarm==="ON";
+const st=d.status||"",alarm=d.alarm==="ON";tc(d);
 document.getElementById("tiles").innerHTML=
  tile("État",alarm?"Alarme":(ST[st]||st||"—"),alarm?"bad":st==="Ok"?"acc":"")+
  tile("Ambiante",deg(d.temperature))+tile("Consigne",deg(d.target_temperature),"acc")+
@@ -1466,6 +1494,32 @@ void webSetup() {
     web.sendHeader("Cache-Control", "no-store");
     web.send(200, "application/json", out);
   });
+  // 2026.11.6 : telecommande de la page web. Memes ordres que Home Assistant
+  // (passent par mqttCallback). En-tete X-ECC exige : un formulaire d'un autre
+  // site ne peut pas l'envoyer (protection CSRF).
+  web.on("/cmd", HTTP_POST, []() {
+    if (!webAuth())
+      return;
+    if (web.header("X-ECC") != "1") {
+      web.send(403, "text/plain", "refuse");
+      return;
+    }
+    String t = web.arg("t"), v = web.arg("v");
+    static const char *allowed[] = {"hvac_mode", "target_temperature", "preset_mode", "fan_mode",
+                                    "fan2_mode", "standby", "relax"};
+    bool ok = false;
+    for (auto a : allowed)
+      if (t == a)
+        ok = true;
+    if (!ok || v.length() == 0 || v.length() > 16) {
+      web.send(400, "text/plain", "ordre invalide");
+      return;
+    }
+    debugln("Page web : " + t + " = " + v);
+    mqttCallback("edilkamin/322707E4/" + t + "/set", (byte *)v.c_str(), v.length());
+    web.sendHeader("Cache-Control", "no-store");
+    web.send(200, "text/plain", "ok");
+  });
   // 2026.11.2 : envoi d'un firmware (.bin) depuis la page
   web.on(
       "/update", HTTP_POST,
@@ -1501,6 +1555,8 @@ void webSetup() {
         }
       });
   web.onNotFound([]() { web.send(404, "text/plain", "Introuvable"); });
+  static const char *hdrs[] = {"X-ECC"};
+  web.collectHeaders(hdrs, 1); // 2026.11.6 : en-tete de la telecommande
   web.begin();
 }
 
