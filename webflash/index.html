@@ -28,7 +28,7 @@
 <body>
 <main>
   <h1>Edilkamin Control – firmware ESP32</h1>
-  <p class="ver">Version <b id="v">2026.11.3</b> · Wemos D1 Mini ESP32</p>
+  <p class="ver">Version <b id="v">2026.11.4</b> · Wemos D1 Mini ESP32</p>
 
   <section>
     <div class="install">
@@ -72,7 +72,12 @@
   </section>
 
   <section>
-    <h2>Nouveautés · What's new — 2026.11.3</h2>
+    <h2>Nouveautés · What's new — 2026.11.4</h2>
+    <ul>
+      <li>Température ambiante transmise au dixième de degré à Home Assistant : la précision du thermostat passe de 0,5 °C à 0,1 °C. La consigne reste réglable par pas de 0,5 °C.<br>
+        <small>Room temperature passed to Home Assistant to a tenth of a degree: thermostat precision goes from 0.5 °C to 0.1 °C. The setpoint is still set in 0.5 °C steps.</small></li>
+    </ul>
+    <h2>2026.11.3</h2>
     <ul>
       <li>Le Bluetooth du poêle est libéré plus vite : la température est lue en premier, les lectures sont rapprochées et l'ESP32 se déconnecte dès que toutes les valeurs sont relues (au lieu de rester 30 s). La télécommande et l'application Edilkamin trouvent le poêle libre plus souvent.<br>
         <small>The stove Bluetooth is released sooner: temperature is read first, reads are closer together and the ESP32 disconnects as soon as all values are read (instead of staying 30 s). The remote and the Edilkamin app find the stove free more often.</small></li>

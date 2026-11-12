@@ -1,7 +1,7 @@
 {
-  "version": "2026.11.3",
+  "version": "2026.11.4",
   "url": "firmware.bin",
-  "md5": "f9b663db4c1423234357d7da4955e523",
+  "md5": "e48c725afac89f69a92fb3b5b9fa36dc",
   "release_url": "https://akoonet-homeassistant.github.io/edilkamin_control/webflash/",
-  "summary": "Bluetooth du poêle libéré plus vite : température lue en premier, lectures rapprochées, déconnexion dès la fin du cycle. Nouveaux capteurs : occupation du Bluetooth et durée de connexion."
+  "summary": "Température ambiante transmise au dixième de degré à Home Assistant (précision du thermostat 0,1 °C au lieu de 0,5 °C). La consigne reste réglable par pas de 0,5 °C."
 }
