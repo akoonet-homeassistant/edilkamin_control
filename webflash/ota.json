@@ -1,7 +1,7 @@
 {
-  "version": "2026.11.5",
+  "version": "2026.11.6",
   "url": "firmware.bin",
-  "md5": "b703202882534c93b522ae7779f422ff",
+  "md5": "8dbf28d76ebb5256edefa53bec2bd974",
   "release_url": "https://akoonet-homeassistant.github.io/edilkamin_control/webflash/",
-  "summary": "La page web de l'ESP32 affiche le planning de secours reçu de Home Assistant (plages, jours, consigne, mode, puissance, ventilations, silence) et échappe tous les textes affichés."
+  "summary": "Télécommande sur la page web de l'ESP32 : marche/arrêt (arrêt confirmé), consigne par pas de 0,5 °C, puissance, ventilations 1 et 2, Stand-by et Silence. Fonctionne aussi sans Home Assistant."
 }
