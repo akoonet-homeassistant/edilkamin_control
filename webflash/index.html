@@ -28,7 +28,7 @@
 <body>
 <main>
   <h1>Edilkamin Control – firmware ESP32</h1>
-  <p class="ver">Version <b id="v">2026.11.4</b> · Wemos D1 Mini ESP32</p>
+  <p class="ver">Version <b id="v">2026.11.5</b> · Wemos D1 Mini ESP32</p>
 
   <section>
     <div class="install">
@@ -72,7 +72,16 @@
   </section>
 
   <section>
-    <h2>Nouveautés · What's new — 2026.11.4</h2>
+    <h2>Nouveautés · What's new — 2026.11.5</h2>
+    <ul>
+      <li>La page web de l'ESP32 affiche le planning de secours reçu de Home Assistant : chaque plage avec ses horaires, ses jours, sa consigne, Marche ou Stand-by, la puissance, les ventilations et le silence. La plage appliquée est mise en évidence quand le planning de secours est actif.<br>
+        <small>The ESP32 web page shows the fallback schedule received from Home Assistant: each slot with its times, days, setpoint, On or Stand-by, power, fans and silent mode. The applied slot is highlighted when the fallback schedule is active.</small></li>
+      <li>Tous les textes affichés sur la page web sont échappés (protection contre l'injection de code).<br>
+        <small>All text shown on the web page is escaped (protection against code injection).</small></li>
+      <li>S'installe à distance depuis Home Assistant (Paramètres → Mises à jour).<br>
+        <small>Installs remotely from Home Assistant (Settings → Updates).</small></li>
+    </ul>
+    <h2>2026.11.4</h2>
     <ul>
       <li>Température ambiante transmise au dixième de degré à Home Assistant : la précision du thermostat passe de 0,5 °C à 0,1 °C. La consigne reste réglable par pas de 0,5 °C.<br>
         <small>Room temperature passed to Home Assistant to a tenth of a degree: thermostat precision goes from 0.5 °C to 0.1 °C. The setpoint is still set in 0.5 °C steps.</small></li>

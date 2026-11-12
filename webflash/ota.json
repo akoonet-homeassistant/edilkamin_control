@@ -1,7 +1,7 @@
 {
-  "version": "2026.11.4",
+  "version": "2026.11.5",
   "url": "firmware.bin",
-  "md5": "e48c725afac89f69a92fb3b5b9fa36dc",
+  "md5": "b703202882534c93b522ae7779f422ff",
   "release_url": "https://akoonet-homeassistant.github.io/edilkamin_control/webflash/",
-  "summary": "Température ambiante transmise au dixième de degré à Home Assistant (précision du thermostat 0,1 °C au lieu de 0,5 °C). La consigne reste réglable par pas de 0,5 °C."
+  "summary": "La page web de l'ESP32 affiche le planning de secours reçu de Home Assistant (plages, jours, consigne, mode, puissance, ventilations, silence) et échappe tous les textes affichés."
 }
