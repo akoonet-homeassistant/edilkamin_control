@@ -6,6 +6,11 @@ Ces versions ne sont pas des releases GitHub : les releases du dépôt sont cell
 
 *English version below.*
 
+## 2026.11.7
+- Le poêle est relu **15 s après chaque ordre** (Home Assistant ou page web) : allumage, arrêt ou consigne sont confirmés sans attendre la lecture suivante.
+- Pendant l'allumage, le préchauffage et l'extinction, l'ESP32 relit le poêle **toutes les 30 s** au lieu de 2 min, puis revient au rythme normal. L'occupation du Bluetooth augmente seulement pendant ces phases.
+- Un allumage lancé par le poêle lui-même (sortie de Stand-by) ou par la télécommande reste vu jusqu'à 2 min plus tard.
+
 ## 2026.11.6
 - **Télécommande sur la page web de l'ESP32** : marche/arrêt, consigne par pas de 0,5 °C, puissance (Auto, P1 à P5), ventilations 1 et 2, Stand-by et Silence (Relax).
 - L'arrêt se confirme par un second appui (le bouton devient « Confirmer l'arrêt » pendant 4 s). La consigne part 1,2 s après le dernier appui sur − ou +.
@@ -41,6 +46,11 @@ Ces versions ne sont pas des releases GitHub : les releases du dépôt sont cell
 Version history of the Edilkamin Control ESP32 firmware. Install it from the [install page](https://akoonet-homeassistant.github.io/edilkamin_control/webflash/) or, since 2026.11.2, remotely from Home Assistant (**Settings → Updates → ESP32 firmware**).
 
 These versions are not GitHub releases: the repository releases are the integration's (HACS).
+
+## 2026.11.7
+- The stove is read again **15 s after each command** (Home Assistant or web page): on, off or setpoint are confirmed without waiting for the next read.
+- During ignition, warm-up and shutdown, the ESP32 reads the stove **every 30 s** instead of 2 min, then goes back to the normal pace. Bluetooth occupancy only rises during these phases.
+- An ignition started by the stove itself (leaving Stand-by) or by the remote is still seen up to 2 min later.
 
 ## 2026.11.6
 - **Remote control on the ESP32 web page**: on/off, setpoint in 0.5 °C steps, power (Auto, P1 to P5), fans 1 and 2, Stand-by and Silent (Relax).
