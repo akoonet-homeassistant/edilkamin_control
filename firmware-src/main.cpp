@@ -92,6 +92,12 @@ const long connectTimeout = 1000 * 30;     // 30 sec
 const long bleConnectTimeout = 1000 * 300; // 5 min
 const long bleOnTime = 1000 * 30;          // 30 sec (plafond : le cycle se termine normalement avant)
 const long bleOffTime = 1000 * 120;        // 2 min
+// 2026.11.7 : lectures plus rapprochees pendant les phases de transition
+// (allumage, prechauffage, extinction) et relecture 15 s apres un ordre
+const long bleOffTimeTransition = 1000 * 30; // 30 s
+const unsigned long quickReadDelay = 1000UL * 15;
+bool stoveTransition = false;
+unsigned long msQuickRead = 0; // instant du dernier ordre (0 = aucune relecture prevue)
 
 byte currentFan1Level = 0;
 // akoonet: ventilateurs 2 et 3 (registre 1322 = 0x052A)
@@ -1008,6 +1014,8 @@ void processBtResponseData(byte *btData) {
     } else if (currentOp == Helper::READ_FIREPLACE_MAIN_STATUS) {
       stoveStatusKnown = true; // akoonet-13
       stoveIsOff = (d.payload[3] == 0 && d.payload[4] == 0);
+      // 2026.11.7 : allumage (x/1), extinction (0/3, 0/4) = phase de transition
+      stoveTransition = d.payload[4] == 1 || (d.payload[3] == 0 && (d.payload[4] == 3 || d.payload[4] == 4));
       // akoonet-9 : apres une sortie de veille (stand-by), le poele repart
       // seul et rien ne republiait "heat" : le thermostat restait sur Arret.
       // Phases d'allumage (3 a 7) et marche (Ok) => hvac_mode = heat.
@@ -2313,6 +2321,9 @@ void loop() {
                          currentMillis - bleLastConnect >= bleOnTime)) {
       doBtConnect = false;
       bleLastSwitchOff = currentMillis;
+      // 2026.11.7 : ce cycle a deja relu le poele plus de 15 s apres l'ordre
+      if (msQuickRead && currentMillis - msQuickRead >= quickReadDelay)
+        msQuickRead = 0;
       cycleQueries = 0;
       queryIndex = 0; // la temperature sera relue en premier au prochain reveil
       status = START;
@@ -2320,8 +2331,11 @@ void loop() {
       status = START; // deconnexion en cours : rien a envoyer
     } else if (bleConnected) {
       status = DO_NEXT_QUERY;
-    } else if (!bleConnected && currentMillis - bleLastSwitchOff >= bleOffTime) {
+    } else if (!bleConnected &&
+               (currentMillis - bleLastSwitchOff >= (stoveTransition ? bleOffTimeTransition : bleOffTime) ||
+                (msQuickRead && currentMillis - msQuickRead >= quickReadDelay))) {
       debugln(F("Bluetooth wake up..."));
+      msQuickRead = 0;
       status = DO_NEXT_QUERY;
     } else if (!bleConnected) {
       status = START;
@@ -2347,6 +2361,8 @@ void loop() {
     btRetryCount = 0;
     writeBtData();
     writeTimestamp = currentMillis;
+    if (currentCmd[1] == 6) // 2026.11.7 : ordre ecrit -> relecture 15 s apres
+      msQuickRead = currentMillis | 1;
     status = AWAIT_BT_RESPONSE;
     break;
   case AWAIT_BT_RESPONSE:
