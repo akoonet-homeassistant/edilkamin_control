@@ -1,7 +1,7 @@
 {
-  "version": "2026.11.6",
+  "version": "2026.11.7",
   "url": "firmware.bin",
-  "md5": "8dbf28d76ebb5256edefa53bec2bd974",
+  "md5": "f0375ea6253241d807270488ab6695a6",
   "release_url": "https://akoonet-homeassistant.github.io/edilkamin_control/webflash/",
-  "summary": "Télécommande sur la page web de l'ESP32 : marche/arrêt (arrêt confirmé), consigne par pas de 0,5 °C, puissance, ventilations 1 et 2, Stand-by et Silence. Fonctionne aussi sans Home Assistant."
+  "summary": "Allumages, extinctions et ordres vus plus vite dans Home Assistant : relecture du poêle 15 s après chaque ordre, et toutes les 30 s (au lieu de 2 min) pendant l'allumage, le préchauffage et l'extinction."
 }

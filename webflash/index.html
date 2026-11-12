@@ -28,7 +28,7 @@
 <body>
 <main>
   <h1>Edilkamin Control – firmware ESP32</h1>
-  <p class="ver">Version <b id="v">2026.11.6</b> · Wemos D1 Mini ESP32</p>
+  <p class="ver">Version <b id="v">2026.11.7</b> · Wemos D1 Mini ESP32</p>
 
   <section>
     <div class="install">
@@ -72,7 +72,14 @@
   </section>
 
   <section>
-    <h2>Nouveautés · What's new — 2026.11.6</h2>
+    <h2>Nouveautés · What's new — 2026.11.7</h2>
+    <ul>
+      <li>Le poêle est relu 15 s après chaque ordre (Home Assistant ou page web) : allumage, arrêt ou consigne sont confirmés sans attendre la lecture suivante.<br>
+        <small>The stove is read again 15 s after each command (Home Assistant or web page): on, off or setpoint are confirmed without waiting for the next read.</small></li>
+      <li>Pendant l'allumage, le préchauffage et l'extinction, l'ESP32 relit le poêle toutes les 30 s au lieu de 2 min, puis revient au rythme normal. Un allumage lancé par le poêle ou la télécommande reste vu jusqu'à 2 min plus tard.<br>
+        <small>During ignition, warm-up and shutdown, the ESP32 reads the stove every 30 s instead of 2 min, then goes back to the normal pace. An ignition started by the stove or the remote is still seen up to 2 min later.</small></li>
+    </ul>
+    <h2>2026.11.6</h2>
     <ul>
       <li>Télécommande sur la page web de l'ESP32 : marche/arrêt (l'arrêt se confirme par un second appui), consigne par pas de 0,5 °C, puissance (Auto, P1 à P5), ventilations 1 et 2, Stand-by et Silence. Les ordres passent par l'ESP32, comme ceux de Home Assistant, et fonctionnent aussi quand Home Assistant est absent. Un changement de consigne est vu par l'intégration comme une dérogation, gardée jusqu'au prochain changement de plage.<br>
         <small>Remote control on the ESP32 web page: on/off (off is confirmed by a second tap), setpoint in 0.5 °C steps, power (Auto, P1 to P5), fans 1 and 2, Stand-by and Silent. Commands go through the ESP32, like Home Assistant's, and also work when Home Assistant is down. A setpoint change is seen by the integration as an override, kept until the next slot change.</small></li>

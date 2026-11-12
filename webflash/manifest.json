@@ -1,6 +1,6 @@
 {
   "name": "Edilkamin Control ESP32",
-  "version": "2026.11.6",
+  "version": "2026.11.7",
   "new_install_prompt_erase": true,
   "builds": [
     {
