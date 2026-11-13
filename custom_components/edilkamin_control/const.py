@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "edilkamin_control"
-VERSION = "2026.11.19"
+VERSION = "2026.11.20"
 
 # Clés de configuration (entrée de configuration / options)
 CONF_CLIMATE = "climate"
@@ -22,6 +22,8 @@ CONF_IGNITIONS = "ignitions"
 CONF_IGNITION_LOG = "ignition_log"  # input_text « jj/mm hh:mm;… » d'une automatisation existante
 CONF_STOP_LOG = "stop_log"
 CONF_FIRMWARE_URL = "firmware_url"  # manifeste JSON du firmware ESP32 (mise à jour à distance)
+CONF_HOLIDAYS = "holiday_calendar"  # calendrier des jours fériés (intégration Holiday)
+HOLIDAY = 7  # « jour » des jours fériés dans la liste des jours d'une programmation
 CONF_WINDOWS = "windows"  # fenêtres et portes surveillées (binary_sensor)
 CONF_WINDOW_OPEN_DELAY = "window_open_delay"  # min d'ouverture avant de couper le poêle (0 à 60)
 CONF_WINDOW_CLOSE_DELAY = "window_close_delay"  # min après la fermeture avant de reprendre (0 à 60)

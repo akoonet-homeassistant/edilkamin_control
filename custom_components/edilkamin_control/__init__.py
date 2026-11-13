@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import logging
 from pathlib import Path
 
@@ -51,7 +53,7 @@ PLATFORMS = [
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-_DAYS = vol.All(cv.ensure_list, [vol.All(vol.Coerce(int), vol.Range(min=0, max=6))])
+_DAYS = vol.All(cv.ensure_list, [vol.All(vol.Coerce(int), vol.Range(min=0, max=7))])
 _TIME = vol.Match(r"^\d{1,2}:\d{2}(:\d{2})?$")
 _ENTRY = vol.Optional("entry_id")
 _PROFILE = vol.All(vol.Coerce(int), vol.Range(min=1))
@@ -121,10 +123,17 @@ def _profile(ctl: EdilkaminController, n: int) -> dict:
     return p
 
 
+def _check_holidays(ctl: EdilkaminController, days: Any, before: Any = ()) -> None:
+    """« Jours fériés » (7) cochable seulement si le calendrier des jours fériés existe."""
+    if 7 in (days or []) and 7 not in (before or []) and not ctl.holiday_calendar_ok():
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="no_holiday_calendar")
+
+
 def _register_services(hass: HomeAssistant) -> None:
     async def add_profile(call: ServiceCall) -> None:
         ctl = _controller(hass, call)
         values = {k: v for k, v in call.data.items() if k != "entry_id"}
+        _check_holidays(ctl, values.get(F_DAYS))
         try:
             await ctl.async_add_profile(values)
         except ValueError as err:
@@ -136,7 +145,9 @@ def _register_services(hass: HomeAssistant) -> None:
 
     async def set_profile_days(call: ServiceCall) -> None:
         ctl = _controller(hass, call)
-        await ctl.async_set_field(_profile(ctl, call.data["profile"])[F_ID], F_DAYS, sorted(set(call.data[F_DAYS])))
+        p = _profile(ctl, call.data["profile"])
+        _check_holidays(ctl, call.data[F_DAYS], p.get(F_DAYS))
+        await ctl.async_set_field(p[F_ID], F_DAYS, sorted(set(call.data[F_DAYS])))
 
     async def move_profile(call: ServiceCall) -> None:
         ctl = _controller(hass, call)

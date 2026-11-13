@@ -54,6 +54,9 @@ class CurrentProfile(EdilkaminEntity, SensorEntity):
             "occupied": self.ctl.occupied,
             "resync": st.get("resync"),
             "observe": self.ctl.observe,
+            "holiday_calendar": self.ctl.cfg.get("holiday_calendar"),
+            "holiday_today": dt_util.now().date() in self.ctl.holidays,
+            "holidays": sorted(d.isoformat() for d in self.ctl.holidays),
         }
 
 

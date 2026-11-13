@@ -19,6 +19,7 @@ from .const import (
     CONF_FIRMWARE_URL,
     CONF_WINDOW_CLOSE_DELAY,
     CONF_WINDOW_OPEN_DELAY,
+    CONF_HOLIDAYS,
     CONF_WINDOWS,
     CONF_IGNITION_LOG,
     CONF_IGNITIONS,
@@ -138,6 +139,7 @@ def entities_schema(hass: HomeAssistant, d: dict[str, Any]) -> vol.Schema:
             selector.NumberSelectorConfig(min=0, max=60, step=1, unit_of_measurement="min", mode=selector.NumberSelectorMode.SLIDER)),
         vol.Required(CONF_WINDOW_CLOSE_DELAY, default=d.get(CONF_WINDOW_CLOSE_DELAY, 0)): selector.NumberSelector(
             selector.NumberSelectorConfig(min=0, max=60, step=1, unit_of_measurement="min", mode=selector.NumberSelectorMode.SLIDER)),
+        opt(CONF_HOLIDAYS): ent("calendar"),
         vol.Required(CONF_SCHEDULE_FORMAT, default=d.get(CONF_SCHEDULE_FORMAT, "v2")): selector.SelectSelector(
             selector.SelectSelectorConfig(options=["v2", "v1"], translation_key="schedule_format",
                                           mode=selector.SelectSelectorMode.DROPDOWN)),
@@ -158,7 +160,7 @@ def clean(user_input: dict[str, Any]) -> dict[str, Any]:
     if out.get(CONF_PELLET_ENTRY) == NONE:
         out[CONF_PELLET_ENTRY] = None
     out[CONF_WINDOWS] = list(out.get(CONF_WINDOWS) or [])
-    for k in (CONF_FAN2, CONF_RELAX, CONF_CHRONO, CONF_IGNITIONS, CONF_IGNITION_LOG, CONF_STOP_LOG, CONF_PRESENCE, CONF_MQTT_TOPIC, CONF_FIRMWARE_URL):
+    for k in (CONF_FAN2, CONF_RELAX, CONF_CHRONO, CONF_IGNITIONS, CONF_IGNITION_LOG, CONF_STOP_LOG, CONF_PRESENCE, CONF_MQTT_TOPIC, CONF_FIRMWARE_URL, CONF_HOLIDAYS):
         out.setdefault(k, None)
         if out[k] == "":
             out[k] = None

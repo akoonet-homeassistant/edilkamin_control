@@ -9,7 +9,8 @@ de l'ESP32, planning de secours publié en MQTT et suivi du réservoir de granul
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
+from collections.abc import Callable
+from datetime import date, datetime, timedelta
 import json
 import logging
 import re
@@ -38,6 +39,7 @@ from .const import (
     CONF_CHRONO,
     CONF_CLIMATE,
     CONF_FAN2,
+    CONF_HOLIDAYS,
     CONF_IGNITION_LOG,
     CONF_IGNITIONS,
     CONF_STOP_LOG,
@@ -45,6 +47,7 @@ from .const import (
     CONF_WINDOW_OPEN_DELAY,
     CONF_WINDOWS,
     HISTORY_DAYS,
+    HOLIDAY,
     CONF_MQTT_TOPIC,
     CONF_OBSERVE,
     CONF_PELLET_ENTRY,
@@ -119,24 +122,42 @@ def to_minutes(value: str | None) -> int:
         return 0
 
 
-def profile_matches(profile: dict, now: datetime) -> bool:
+def _event_day(value: Any) -> date | None:
+    """Jour d'un début ou d'une fin d'événement de calendrier (« AAAA-MM-JJ » ou date et heure)."""
+    if not value:
+        return None
+    s = str(value)
+    if len(s) == 10:
+        try:
+            return date.fromisoformat(s)
+        except ValueError:
+            return None
+    dt = dt_util.parse_datetime(s)
+    return dt_util.as_local(dt).date() if dt else None
+
+
+def _weekday_in(days: list[int], day: date) -> bool:
+    return day.weekday() in days
+
+
+def profile_matches(profile: dict, now: datetime, day_in: Callable[[list[int], date], bool] = _weekday_in) -> bool:
     """La plage de la programmation contient-elle l'instant donné (jours compris) ?
 
     Début = fin : toute la journée. Plage pouvant passer minuit : la partie après minuit
-    appartient au jour du début.
+    appartient au jour du début. day_in dit si un jour compte (jours fériés compris).
     """
     d, f = to_minutes(profile[F_START]), to_minutes(profile[F_END])
     m = now.hour * 60 + now.minute
-    wd = now.weekday()
     days = profile.get(F_DAYS) or ALL_DAYS
+    today = now.date()
     if d == f:
-        return wd in days
+        return day_in(days, today)
     if d < f:
-        return d <= m < f and wd in days
+        return d <= m < f and day_in(days, today)
     if m >= d:
-        return wd in days
+        return day_in(days, today)
     if m < f:
-        return (wd - 1) % 7 in days
+        return day_in(days, today - timedelta(days=1))
     return False
 
 
@@ -175,6 +196,7 @@ class EdilkaminController:
         self.last_verify: datetime | None = None
         self.current_changed: datetime = dt_util.utcnow()
         self.next_change: datetime | None = None
+        self.holidays: set[date] = set()  # jours fériés des 10 prochains jours
         self.occupied: bool = True
         self.pellet_stock: str | None = None
         self.pellet_consumed: str | None = None
@@ -255,7 +277,7 @@ class EdilkaminController:
     def _normalize(p: dict) -> dict:
         p[F_START] = str(p.get(F_START, "00:00"))[:5]
         p[F_END] = str(p.get(F_END, "00:00"))[:5]
-        days = sorted({int(d) for d in (p.get(F_DAYS) or ALL_DAYS) if 0 <= int(d) <= 6})
+        days = sorted({int(d) for d in (p.get(F_DAYS) or ALL_DAYS) if 0 <= int(d) <= HOLIDAY})
         p[F_DAYS] = days or list(ALL_DAYS)
         p[F_SETPOINT] = round(float(p.get(F_SETPOINT, 20)) * 2) / 2
         if p.get(F_MODE) not in (MODE_RUN, MODE_STANDBY):
@@ -387,6 +409,7 @@ class EdilkaminController:
 
         async def _started(_: Event | None = None) -> None:
             self._import_legacy_reservoir()
+            await self.async_refresh_holidays()
             self.schedule_next_slot()
             self.schedule_publish(0)
             self._windows_changed()
@@ -423,20 +446,67 @@ class EdilkaminController:
         """Programmation active dont la plage contient l'heure : la première de la liste l'emporte."""
         now = now or dt_util.now()
         for p in self.profiles:
-            if p[F_ACTIVE] and profile_matches(p, now):
+            if p[F_ACTIVE] and profile_matches(p, now, self.day_in):
                 return p[F_ID]
         return None
 
     def _boundary_effective(self, p: dict, minutes: int, is_end: bool, when: datetime) -> bool:
         """Un début ou une fin de plage compte-t-il ce jour-là (jours de la programmation) ?"""
         days = p.get(F_DAYS) or ALL_DAYS
-        wd = when.weekday()
+        day = when.date()
         if not is_end or to_minutes(p[F_START]) == to_minutes(p[F_END]):
-            return wd in days
+            return self.day_in(days, day)
         # Fin d'une plage qui passe minuit : elle appartient au jour du début
         if to_minutes(p[F_END]) < to_minutes(p[F_START]):
-            return (wd - 1) % 7 in days
-        return wd in days
+            return self.day_in(days, day - timedelta(days=1))
+        return self.day_in(days, day)
+
+    # ------------------------------------------------------------------ jours fériés
+    def holiday_calendar_ok(self) -> bool:
+        """Calendrier des jours fériés choisi dans les options et présent dans Home Assistant."""
+        cal = self.cfg.get(CONF_HOLIDAYS)
+        return bool(cal) and self.hass.states.get(cal) is not None
+
+    def holiday_mode(self, day: date) -> bool:
+        """Jour férié et au moins une programmation activée cochée « Jours fériés » :
+        seules ces programmations comptent ce jour-là. Sinon le jour de la semaine s'applique."""
+        return day in self.holidays and any(
+            p[F_ACTIVE] and HOLIDAY in (p.get(F_DAYS) or []) for p in self.profiles)
+
+    def day_in(self, days: list[int], day: date) -> bool:
+        if self.holiday_mode(day):
+            return HOLIDAY in days
+        return day.weekday() in days
+
+    async def async_refresh_holidays(self) -> None:
+        """Jours fériés des 10 prochains jours, lus dans le calendrier choisi (intégration Holiday)."""
+        cal = self.cfg.get(CONF_HOLIDAYS)
+        found: set[date] = set()
+        if cal and self.hass.services.has_service("calendar", "get_events"):
+            start = dt_util.start_of_local_day()
+            try:
+                resp = await self.hass.services.async_call(
+                    "calendar", "get_events",
+                    {"entity_id": cal, "start_date_time": start.isoformat(),
+                     "end_date_time": (start + timedelta(days=10)).isoformat()},
+                    blocking=True, return_response=True)
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.warning("Jours fériés : lecture de %s impossible : %s", cal, err)
+                resp = None
+            for ev in ((resp or {}).get(cal) or {}).get("events", []):
+                first, last = _event_day(ev.get("start")), _event_day(ev.get("end"))
+                if first is None:
+                    continue
+                if last is None or last <= first:
+                    last = first + timedelta(days=1)
+                d = first
+                while d < last and len(found) < 40:
+                    found.add(d)
+                    d += timedelta(days=1)
+        changed = found != self.holidays
+        self.holidays = found
+        if changed:
+            self.notify()
 
     def next_slot(self, after: datetime | None = None) -> datetime | None:
         """Prochain début ou fin de plage d'une programmation activée (jours compris)."""
@@ -1079,10 +1149,19 @@ class EdilkaminController:
             st["relax_manual"] = False
             self.hass.async_create_task(self.async_apply(K_RELAX_END))
 
-    async def _on_midnight(self, _now: datetime) -> None:
+    async def _on_midnight(self, now: datetime) -> None:
         if self.state["relax_manual"]:
             self.state["relax_manual"] = False
             await self.async_apply(K_RELAX_END)
+        # Jours fériés : relus chaque nuit ; entrée ou sortie d'un jour férié -> plages recalculées
+        today = dt_util.as_local(now).date()
+        before = self.holiday_mode(today), self.holiday_mode(today - timedelta(days=1))
+        await self.async_refresh_holidays()
+        after = self.holiday_mode(today), self.holiday_mode(today - timedelta(days=1))
+        if before != after or after[0] != after[1]:
+            self.schedule_next_slot()
+            if self.target() != self.state.get("current"):
+                await self.async_apply(K_SLOT)
 
     # ------------------------------------------------------------------ fenêtres ouvertes
     def windows(self) -> list[str]:
@@ -1352,7 +1431,12 @@ class EdilkaminController:
             }
             if fmt != "v1":
                 item["r"] = 1 if p[F_RELAX] else 0
-                item["j"] = sum(1 << d for d in (p.get(F_DAYS) or ALL_DAYS))
+                # L'ESP32 ne connaît pas les jours fériés : jours de la semaine seulement ;
+                # une programmation « jours fériés » seule n'est pas envoyée (désactivée)
+                j = sum(1 << d for d in (p.get(F_DAYS) or ALL_DAYS) if d < HOLIDAY)
+                item["j"] = j or 127
+                if not j:
+                    item["a"] = 0
             out.append(item)
         if fmt == "v1":  # firmware akoonet-13 : exactement 5 plages
             while len(out) < 5:
