@@ -28,6 +28,7 @@
           "stop_log": "Existing stop history (input_text, optional)",
           "firmware_url": "ESP32 firmware manifest (remote update)",
           "windows": "Watched windows and doors",
+          "holiday_calendar": "Public holidays calendar",
           "window_open_delay": "Delay before cut-off (window open)",
           "window_close_delay": "Delay before resuming (windows closed)"
         },
@@ -39,6 +40,7 @@
           "ignition_log": "Only when an automation already kept the stove ignition list (« dd/mm hh:mm ; … », newest first): it is imported into the card's Ignitions button, then followed. Leave empty otherwise: the integration keeps its own history from the stove ignition counter.",
           "firmware_url": "Empty = project install page on GitHub. Can point to an ota.json file served by Home Assistant (/local/…) or another server.",
           "windows": "An open window turns the stove off if it is on and keeps the schedule from turning it on. The schedule resumes once they are all closed.",
+          "holiday_calendar": "Calendar of the Holiday integration (Settings → Devices & services → Add → Holiday). Schedules ticked “Public holidays” apply on those days instead of the weekday ones. Optional.",
           "window_open_delay": "How long a window must stay open before the stove is turned off (0 = right away). Shorter airing does nothing.",
           "window_close_delay": "Time after the last window is closed before the schedule resumes (0 = right away).",
           "stop_log": "Stop list kept by the same automation, in the same order (« - » = ignition running, « ? » = missed stop): it fills in the stop times of the history. Leave empty otherwise."
@@ -70,6 +72,7 @@
           "stop_log": "Existing stop history (input_text, optional)",
           "firmware_url": "ESP32 firmware manifest (remote update)",
           "windows": "Watched windows and doors",
+          "holiday_calendar": "Public holidays calendar",
           "window_open_delay": "Delay before cut-off (window open)",
           "window_close_delay": "Delay before resuming (windows closed)"
         },
@@ -81,6 +84,7 @@
           "ignition_log": "Only when an automation already kept the stove ignition list (« dd/mm hh:mm ; … », newest first): it is imported into the card's Ignitions button, then followed. Leave empty otherwise: the integration keeps its own history from the stove ignition counter.",
           "firmware_url": "Empty = project install page on GitHub. Can point to an ota.json file served by Home Assistant (/local/…) or another server.",
           "windows": "An open window turns the stove off if it is on and keeps the schedule from turning it on. The schedule resumes once they are all closed.",
+          "holiday_calendar": "Calendar of the Holiday integration (Settings → Devices & services → Add → Holiday). Schedules ticked “Public holidays” apply on those days instead of the weekday ones. Optional.",
           "window_open_delay": "How long a window must stay open before the stove is turned off (0 = right away). Shorter airing does nothing.",
           "window_close_delay": "Time after the last window is closed before the schedule resumes (0 = right away).",
           "stop_log": "Stop list kept by the same automation, in the same order (« - » = ignition running, « ? » = missed stop): it fills in the stop times of the history. Leave empty otherwise."
@@ -103,7 +107,8 @@
         "3": "Thursday",
         "4": "Friday",
         "5": "Saturday",
-        "6": "Sunday"
+        "6": "Sunday",
+        "7": "Public holidays"
       }
     },
     "mode": {
@@ -230,6 +235,9 @@
     },
     "no_profile": {
       "message": "Schedule {profile} does not exist."
+    },
+    "no_holiday_calendar": {
+      "message": "Public holidays need the Holiday integration: add it, then choose its calendar in the Edilkamin Control options."
     }
   },
   "services": {

@@ -28,6 +28,7 @@
           "stop_log": "Historique des arrêts existant (input_text, facultatif)",
           "firmware_url": "Manifeste du firmware ESP32 (mise à jour à distance)",
           "windows": "Fenêtres et portes surveillées",
+          "holiday_calendar": "Calendrier des jours fériés",
           "window_open_delay": "Délai avant coupure (fenêtre ouverte)",
           "window_close_delay": "Délai avant reprise (fenêtres fermées)"
         },
@@ -39,6 +40,7 @@
           "ignition_log": "Seulement si une automatisation tenait déjà la liste des allumages du poêle (« jj/mm hh:mm ; … », du plus récent au plus ancien) : elle est reprise dans le bouton Allumages de la carte, puis suivie. Laisser vide sinon : l'intégration tient son propre historique grâce au compteur d'allumages du poêle.",
           "firmware_url": "Vide = page d'installation du projet sur GitHub. Peut pointer vers un fichier ota.json servi par Home Assistant (/local/…) ou un autre serveur.",
           "windows": "Une fenêtre ouverte coupe le poêle s'il est allumé et empêche la programmation de l'allumer. La programmation reprend quand toutes sont refermées.",
+          "holiday_calendar": "Calendrier de l'intégration Jours fériés (Holiday) de Home Assistant (Paramètres → Appareils et services → Ajouter → Holiday). Ces jours-là, les programmations cochées « Jours fériés » s'appliquent à la place de celles du jour de la semaine. Facultatif.",
           "window_open_delay": "Temps pendant lequel une fenêtre doit rester ouverte avant que le poêle soit coupé (0 = aussitôt). Une aération plus courte ne coupe rien.",
           "window_close_delay": "Temps après la fermeture de la dernière fenêtre avant de reprendre la programmation (0 = aussitôt).",
           "stop_log": "Liste des arrêts tenue par la même automatisation, dans le même ordre (« - » = allumage en cours, « ? » = arrêt non vu) : elle complète les heures d'arrêt de l'historique. Laisser vide sinon."
@@ -70,6 +72,7 @@
           "stop_log": "Historique des arrêts existant (input_text, facultatif)",
           "firmware_url": "Manifeste du firmware ESP32 (mise à jour à distance)",
           "windows": "Fenêtres et portes surveillées",
+          "holiday_calendar": "Calendrier des jours fériés",
           "window_open_delay": "Délai avant coupure (fenêtre ouverte)",
           "window_close_delay": "Délai avant reprise (fenêtres fermées)"
         },
@@ -81,6 +84,7 @@
           "ignition_log": "Seulement si une automatisation tenait déjà la liste des allumages du poêle (« jj/mm hh:mm ; … », du plus récent au plus ancien) : elle est reprise dans le bouton Allumages de la carte, puis suivie. Laisser vide sinon : l'intégration tient son propre historique grâce au compteur d'allumages du poêle.",
           "firmware_url": "Vide = page d'installation du projet sur GitHub. Peut pointer vers un fichier ota.json servi par Home Assistant (/local/…) ou un autre serveur.",
           "windows": "Une fenêtre ouverte coupe le poêle s'il est allumé et empêche la programmation de l'allumer. La programmation reprend quand toutes sont refermées.",
+          "holiday_calendar": "Calendrier de l'intégration Jours fériés (Holiday) de Home Assistant (Paramètres → Appareils et services → Ajouter → Holiday). Ces jours-là, les programmations cochées « Jours fériés » s'appliquent à la place de celles du jour de la semaine. Facultatif.",
           "window_open_delay": "Temps pendant lequel une fenêtre doit rester ouverte avant que le poêle soit coupé (0 = aussitôt). Une aération plus courte ne coupe rien.",
           "window_close_delay": "Temps après la fermeture de la dernière fenêtre avant de reprendre la programmation (0 = aussitôt).",
           "stop_log": "Liste des arrêts tenue par la même automatisation, dans le même ordre (« - » = allumage en cours, « ? » = arrêt non vu) : elle complète les heures d'arrêt de l'historique. Laisser vide sinon."
@@ -103,7 +107,8 @@
         "3": "Jeudi",
         "4": "Vendredi",
         "5": "Samedi",
-        "6": "Dimanche"
+        "6": "Dimanche",
+        "7": "Jours fériés"
       }
     },
     "mode": {
@@ -230,6 +235,9 @@
     },
     "no_profile": {
       "message": "La programmation {profile} n'existe pas."
+    },
+    "no_holiday_calendar": {
+      "message": "Les jours fériés nécessitent l'intégration Jours fériés (Holiday) : l'ajouter, puis choisir son calendrier dans les options d'Edilkamin Control."
     }
   },
   "services": {
