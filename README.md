@@ -25,9 +25,10 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 
 #### Programmations
 
-- **Programmations** (10 au maximum) : nom, début, fin (début = fin : toute la journée, plage pouvant passer minuit), jours de la semaine, consigne, mode Marche ou Stand-by, puissance (Auto ou P1 à P5), ventilation 1, ventilation 2, silence (Relax). En cas de chevauchement, la programmation la plus haute dans la liste l'emporte.
+- **Programmations** (10 au maximum) : nom, début, fin (début = fin : toute la journée, plage pouvant passer minuit), jours de la semaine et jours fériés, consigne, mode Marche ou Stand-by, puissance (Auto ou P1 à P5), ventilation 1, ventilation 2, silence (Relax). En cas de chevauchement, la programmation la plus haute dans la liste l'emporte.
 - **Allumage et extinction** : passage hors programmation → programmation, réactivation de la programmation, forçage, et début ou fin de plage quand le poêle est éteint alors que la programmation est en Marche, ou en Stand-by avec une température sous la consigne. Hors programmation, le poêle est éteint (une seule fois, au changement).
 - **Programmation forcée** : une programmation appliquée tout de suite, jusqu'au prochain début ou fin de plage.
+- **Jours fériés** : avec le calendrier de l'intégration Jours fériés (Holiday) de Home Assistant, une programmation peut être cochée « Jours fériés ». Un jour férié, seules les programmations cochées s'appliquent, à la place de celles du jour de la semaine ; si aucune n'est cochée, le jour de la semaine s'applique. Sans ce calendrier, la case ne peut pas être cochée.
 - **Si absent** : avec une entité de présence (alarme, personne, zone, interrupteur…), chaque programmation peut être remplacée par une autre quand la maison est vide.
 
 #### Réglages faits à la main
@@ -129,6 +130,9 @@ Si vous aviez ajouté le dépôt dans les **Dépôts personnalisés** de HACS, v
    - **Fenêtres et portes surveillées** (facultatif, capteurs binaires de type fenêtre, porte, ouverture ou porte de garage), **délai avant coupure** et **délai avant reprise** (0 à 60 min chacun).
 
      ![Options des fenêtres](docs/screenshots/options_fenetres.png)
+   - **Calendrier des jours fériés** (facultatif) : calendrier de l'intégration Jours fériés (Holiday) de Home Assistant, à ajouter avant dans Paramètres → Appareils et services → Ajouter une intégration → « Holiday » (pays et région, Alsace-Moselle comprise). Il rend la case « Jours fériés » des programmations utilisable.
+
+     ![Option des jours fériés](docs/screenshots/options_jours_feries.png)
 
    - **Sujet MQTT du planning de secours** : proposé d'après l'identifiant de l'ESP32 (`edilkamin/<id>/schedule`). Vide = pas d'envoi.
    - **Manifeste du firmware ESP32** (facultatif) : adresse du fichier `ota.json` de la mise à jour à distance. Vide = page d'installation du projet ; peut pointer vers Home Assistant (`/local/…`) ou un autre serveur.
@@ -175,6 +179,9 @@ climate: climate.poele
 - Les étiquettes d'une programmation (Puissance, V1, V2, Stand-by, Silence) changent la valeur à chaque appui.
 - **Classement** : dans le menu des programmations, les flèches ▲ ▼ changent l'ordre (la plus haute l'emporte en cas de chevauchement).
 - **Heures** : début et fin se règlent avec − / + par pas de 5 minutes (appui long pour défiler) ; un appui sur l'heure ouvre le sélecteur.
+- **Jours fériés** : bouton sous les jours de la semaine. Il est grisé tant qu'aucun calendrier de jours fériés n'est choisi dans les options de l'intégration ; la liste affiche alors « + fériés ».
+
+  <img src="docs/screenshots/jours_feries.png" alt="Jours fériés" width="360">
 
 | Programmations | Modification | Nouvelle |
 |---|---|---|
@@ -222,7 +229,7 @@ Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
 |---|---|
 | `switch.poele_programmation` | Programmation activée |
 | `select.poele_programmation_forcee` | Automatique, ou programmation forcée jusqu'au prochain changement de plage |
-| `sensor.poele_programmation_en_cours` | Programmation appliquée (attributs `profile`, `substitution`, `occupied`, `resync`, `observe`) |
+| `sensor.poele_programmation_en_cours` | Programmation appliquée (attributs `profile`, `substitution`, `occupied`, `resync`, `observe`, `holiday_calendar`, `holiday_today`, `holidays`) |
 | `sensor.poele_prochain_changement` | Prochain début ou fin de plage |
 | `sensor.poele_dernier_allumage` | Dernier allumage (attribut `history` : allumages des 3 derniers jours, début et arrêt) |
 | `sensor.poele_derniere_alarme` | Début de la dernière alarme (attribut `history` : 10 dernières alarmes, libellé, début et fin) |
@@ -259,7 +266,7 @@ Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
 |---|---|
 | `edilkamin_control.add_profile` | Crée une programmation (`name`, `start`, `end`, `days`, `setpoint`, `mode`, `power`, `fan1`, `fan2`, `relax`, `active`) |
 | `edilkamin_control.remove_profile` | Supprime la programmation `profile` (position) |
-| `edilkamin_control.set_profile_days` | Jours d'une programmation (`days`, 0 = lundi) |
+| `edilkamin_control.set_profile_days` | Jours d'une programmation (`days`, 0 = lundi … 6 = dimanche, 7 = jours fériés) |
 | `edilkamin_control.move_profile` | Change la position d'une programmation (priorité) |
 | `edilkamin_control.reservoir_filled` | Remet le compteur du réservoir à zéro |
 | `edilkamin_control.publish_schedule` | Envoie tout de suite le planning de secours |
@@ -268,7 +275,7 @@ Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
 
 Message retenu, QoS 1 : `{"v":2,"p":[{"a":1,"d":390,"f":510,"c":205,"m":0,"pu":0,"v1":6,"v2":6,"r":0,"j":31}, …]}`
 
-`a` active · `d`/`f` minutes depuis minuit · `c` consigne × 10 · `m` 1 = Stand-by · `pu` 0 = Auto, 1 à 5 · `v1` 1 à 5, 6 = Auto · `v2` 0 = arrêt, 1 à 5, 6 = Auto · `r` silence · `j` jours (bit 0 = lundi). Le format `v1` envoie exactement 5 plages sans `r` ni `j`.
+`a` active · `d`/`f` minutes depuis minuit · `c` consigne × 10 · `m` 1 = Stand-by · `pu` 0 = Auto, 1 à 5 · `v1` 1 à 5, 6 = Auto · `v2` 0 = arrêt, 1 à 5, 6 = Auto · `r` silence · `j` jours (bit 0 = lundi). Les jours fériés ne sont pas envoyés : l'ESP32 applique les jours de la semaine ; une programmation cochée seulement « Jours fériés » est envoyée désactivée. Le format `v1` envoie exactement 5 plages sans `r` ni `j`.
 
 #### Limites connues
 
@@ -293,9 +300,10 @@ It does not touch the stove itself: everything goes through the entities publish
 
 #### Schedules
 
-- **Schedules** (up to 10): name, start, end (start = end: all day, slots may cross midnight), days of the week, setpoint, Run or Standby, power (Auto or P1 to P5), fan 1, fan 2, silent (Relax). When schedules overlap, the one highest in the list wins.
+- **Schedules** (up to 10): name, start, end (start = end: all day, slots may cross midnight), days of the week and public holidays, setpoint, Run or Standby, power (Auto or P1 to P5), fan 1, fan 2, silent (Relax). When schedules overlap, the one highest in the list wins.
 - **Turning on and off**: leaving no schedule for a schedule, re-enabling scheduling, forcing, and a slot start or end while the stove is off and the schedule is in Run, or in Standby with the temperature below the setpoint. Outside any schedule the stove is turned off (once, on the change).
 - **Forced schedule**: one schedule applied right away, until the next slot start or end.
+- **Public holidays**: with the calendar of Home Assistant's Holiday integration, a schedule can be ticked “Public holidays”. On a public holiday, only the ticked schedules apply, instead of the weekday ones; if none is ticked, the weekday applies. Without this calendar, the box cannot be ticked.
 - **If away**: with a presence entity (alarm, person, zone, switch…), each schedule can be replaced by another one when the house is empty.
 
 #### Settings changed by hand
@@ -397,6 +405,9 @@ If you had added the repository to HACS **Custom repositories**, you can remove 
    - **Watched windows and doors** (optional, binary sensors of the window, door, opening or garage door type), **delay before cut-off** and **delay before resuming** (0 to 60 min each).
 
      ![Window options](docs/screenshots/options_fenetres.png)
+   - **Public holidays calendar** (optional): calendar of Home Assistant's Holiday integration, to add first in Settings → Devices & services → Add integration → “Holiday” (country and region). It makes the “Public holidays” box of the schedules usable.
+
+     ![Public holidays option](docs/screenshots/options_jours_feries.png)
 
    - **Fallback schedule MQTT topic**: suggested from the ESP32 identifier (`edilkamin/<id>/schedule`). Empty = nothing sent.
    - **ESP32 firmware manifest** (optional): address of the remote update `ota.json` file. Empty = project install page; can point to Home Assistant (`/local/…`) or another server.
@@ -443,6 +454,9 @@ climate: climate.stove
 - The tags of a schedule (Power, V1, V2, Standby, Silent) change the value on each tap.
 - **Ordering**: in the schedule menu, the ▲ ▼ arrows change the order (the highest wins when schedules overlap).
 - **Times**: start and end are set with − / + in 5-minute steps (hold to scroll); tapping the time opens the picker.
+- **Public holidays**: button under the weekdays. It is greyed out until a public holidays calendar is chosen in the integration options; the list then shows “+ fériés” (“+ holidays” in English).
+
+  <img src="docs/screenshots/jours_feries.png" alt="Public holidays" width="360">
 
 | Schedules | Edit | New |
 |---|---|---|
@@ -490,7 +504,7 @@ The entity IDs depend on the entry name and on the Home Assistant language (show
 |---|---|
 | `switch.stove_schedule` | Scheduling enabled |
 | `select.stove_forced_schedule` | Automatic, or a schedule forced until the next slot change |
-| `sensor.stove_current_schedule` | Applied schedule (attributes `profile`, `substitution`, `occupied`, `resync`, `observe`) |
+| `sensor.stove_current_schedule` | Applied schedule (attributes `profile`, `substitution`, `occupied`, `resync`, `observe`, `holiday_calendar`, `holiday_today`, `holidays`) |
 | `sensor.stove_next_change` | Next slot start or end |
 | `sensor.stove_last_ignition` | Last ignition (attribute `history`: ignitions of the last 3 days, start and stop) |
 | `sensor.stove_last_alarm` | Start of the last alarm (attribute `history`: last 10 alarms, label, start and end) |
@@ -527,7 +541,7 @@ The entity IDs depend on the entry name and on the Home Assistant language (show
 |---|---|
 | `edilkamin_control.add_profile` | Creates a schedule (`name`, `start`, `end`, `days`, `setpoint`, `mode`, `power`, `fan1`, `fan2`, `relax`, `active`) |
 | `edilkamin_control.remove_profile` | Removes schedule `profile` (position) |
-| `edilkamin_control.set_profile_days` | Days of a schedule (`days`, 0 = Monday) |
+| `edilkamin_control.set_profile_days` | Days of a schedule (`days`, 0 = Monday … 6 = Sunday, 7 = public holidays) |
 | `edilkamin_control.move_profile` | Changes the position of a schedule (priority) |
 | `edilkamin_control.reservoir_filled` | Resets the hopper counter |
 | `edilkamin_control.publish_schedule` | Sends the fallback schedule now |
@@ -536,7 +550,7 @@ The entity IDs depend on the entry name and on the Home Assistant language (show
 
 Retained message, QoS 1: `{"v":2,"p":[{"a":1,"d":390,"f":510,"c":205,"m":0,"pu":0,"v1":6,"v2":6,"r":0,"j":31}, …]}`
 
-`a` enabled · `d`/`f` minutes since midnight · `c` setpoint × 10 · `m` 1 = Standby · `pu` 0 = Auto, 1 to 5 · `v1` 1 to 5, 6 = Auto · `v2` 0 = off, 1 to 5, 6 = Auto · `r` silent · `j` days (bit 0 = Monday). The `v1` format sends exactly 5 slots without `r` or `j`.
+`a` enabled · `d`/`f` minutes since midnight · `c` setpoint × 10 · `m` 1 = Standby · `pu` 0 = Auto, 1 to 5 · `v1` 1 to 5, 6 = Auto · `v2` 0 = off, 1 to 5, 6 = Auto · `r` silent · `j` days (bit 0 = Monday). Public holidays are not sent: the ESP32 applies the weekdays; a schedule ticked “Public holidays” only is sent disabled. The `v1` format sends exactly 5 slots without `r` or `j`.
 
 #### Known limits
 
