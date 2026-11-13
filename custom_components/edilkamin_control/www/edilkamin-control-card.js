@@ -4,7 +4,7 @@
  * et la programmation de l'intégration Edilkamin Control.
  * Aucune dépendance (pas de button-card, card-mod, stack-in-card).
  */
-const ECC_VERSION = "2026.11.19";
+const ECC_VERSION = "2026.11.20";
 
 // Échappement HTML de toute valeur venant de Home Assistant ou de la configuration
 // (noms de programmation, états, options, libellés d'alarme, noms d'entités…)
@@ -33,7 +33,9 @@ const ECC_I18N = {
     alarm_now: "Alarme en cours", none: "Aucune", alarm_title: "10 dernières alarmes", alarm_start: "Début", alarm_end: "Fin",
     no_alarm: "Aucune alarme enregistrée depuis l’installation de l’historique des alarmes.", alarm_unknown: "Alarme", fold_until: "jusqu’à", next_change: "prochain changement à", no_current: "Aucune programmation en cours", pellets: "Granulés", pellets_ok: "OK", pellets_low: "Réserve",
     temp: "Température", power_short: "Puiss.", exhaust: "Fumées",
-    silence: "Silence", days: ["L", "M", "M", "J", "V", "S", "D"], every_day: "tous les jours", weekdays: "lun.–ven.", weekend: "sam.–dim.",
+    silence: "Silence", days: ["L", "M", "M", "J", "V", "S", "D"], every_day: "tous les jours", weekdays: "lun.–ven.", weekend: "sam.–dim.", holidays: "Jours fériés", hol_short: "fériés", hol_only: "jours fériés seulement",
+    hol_hint: "Pour cocher les jours fériés, ajouter l'intégration Jours fériés (Holiday) de Home Assistant puis choisir son calendrier dans les options d'Edilkamin Control.",
+    hol_info: "Un jour férié, seules les programmations cochées « Jours fériés » s'appliquent.",
     add_profile: "Ajouter une programmation", del: "Supprimer", confirm_del: "Supprimer ?", close: "Fermer",
     name: "Nom", start: "Début", end: "Fin", fan1s: "Ventil. 1", fan2s: "Ventil. 2",
     manage: "Gérer les programmations", schedules: "Programmations", new_schedule: "Nouvelle programmation", create: "Créer",
@@ -68,7 +70,9 @@ const ECC_I18N = {
     alarm_now: "Current alarm", none: "None", alarm_title: "Last 10 alarms", alarm_start: "Start", alarm_end: "End",
     no_alarm: "No alarm recorded since the alarm history was installed.", alarm_unknown: "Alarm", fold_until: "until", next_change: "next change at", no_current: "No schedule running", pellets: "Pellets", pellets_ok: "OK", pellets_low: "Low",
     temp: "Temperature", power_short: "Power", exhaust: "Exhaust",
-    silence: "Silent", days: ["M", "T", "W", "T", "F", "S", "S"], every_day: "every day", weekdays: "Mon–Fri", weekend: "Sat–Sun",
+    silence: "Silent", days: ["M", "T", "W", "T", "F", "S", "S"], every_day: "every day", weekdays: "Mon–Fri", weekend: "Sat–Sun", holidays: "Public holidays", hol_short: "holidays", hol_only: "public holidays only",
+    hol_hint: "To tick public holidays, add Home Assistant's Holiday integration, then choose its calendar in the Edilkamin Control options.",
+    hol_info: "On a public holiday, only schedules ticked “Public holidays” apply.",
     add_profile: "Add a schedule", del: "Delete", confirm_del: "Delete?", close: "Close",
     name: "Name", start: "Start", end: "End", fan1s: "Fan 1", fan2s: "Fan 2",
     manage: "Manage schedules", schedules: "Schedules", new_schedule: "New schedule", create: "Create",
@@ -659,11 +663,12 @@ class EdilkaminControlCard extends HTMLElement {
 
   _days(days) {
     const D = this._t("days");
-    if (!Array.isArray(days) || days.length === 0 || days.length === 7) return this._t("every_day");
-    const k = [...days].sort().join(",");
-    if (k === "0,1,2,3,4") return this._t("weekdays");
-    if (k === "5,6") return this._t("weekend");
-    return [...days].sort().map((d) => D[d]).join(" ");
+    if (!Array.isArray(days) || days.length === 0) return this._t("every_day");
+    const hol = days.includes(7), wd = days.filter((d) => d < 7).sort();
+    if (!wd.length) return this._t("hol_only");
+    const k = wd.join(",");
+    const base = wd.length === 7 ? this._t("every_day") : k === "0,1,2,3,4" ? this._t("weekdays") : k === "5,6" ? this._t("weekend") : wd.map((d) => D[d]).join(" ");
+    return hol ? `${base} + ${this._t("hol_short")}` : base;
   }
 
   _profileRow(p, cur) {
@@ -770,6 +775,13 @@ class EdilkaminControlCard extends HTMLElement {
             <button class="round sm" data-act="fsp" data-n="${n}" data-val="+"><ha-icon icon="mdi:plus"></ha-icon></button></div></div>
         </div>
         <div class="daysel">${D.map((l, i) => `<button class="${v.days.includes(i) ? "on" : ""}" data-act="day" data-n="${n}" data-d="${i}">${l}</button>`).join("")}</div>
+        ${(() => {
+          // Case « Jours fériés » : seulement si un calendrier de jours fériés existe (options de l'intégration)
+          const cal = this._s("current_profile")?.attributes?.holiday_calendar;
+          const ok = !!(cal && this._hass.states[cal]), on = v.days.includes(7);
+          return `<div class="daysel hol"><button class="${on ? "on" : ""}" ${ok || on ? "" : "disabled"} data-act="day" data-n="${n}" data-d="7"><ha-icon icon="mdi:calendar-star"></ha-icon>${this._t("holidays")}</button></div>
+            <div class="hint">${ok ? (on ? this._t("hol_info") : "") : this._t("hol_hint")}</div>`;
+        })()}
         <div class="dd3 ${o.fan2 && v.fan2 != null ? "" : "two"}">
           ${dd("power", this._t("power"), (x) => (x === "Auto" ? "Auto" : String(x).replace("Man. ", "")))}
           ${dd("fan1", this._t("fan1s"))}
@@ -1337,6 +1349,10 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .daysel { display: flex; gap: 4px; }
 .daysel button { flex: 1; height: 34px; border-radius: 10px; background: var(--ecc-soft); border: 1px solid var(--divider-color, rgba(127,127,127,.3)); font-size: 12px; font-weight: 600; color: var(--secondary-text-color); }
 .daysel button.on { background: var(--ecc-accent); border-color: var(--ecc-accent); color: #fff; }
+.daysel.hol { margin-top: 6px; }
+.daysel.hol button { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.daysel.hol ha-icon { --mdc-icon-size: 16px; }
+.daysel.hol button:disabled { opacity: .45; }
 .pedit .row2 { margin-top: 0; }
 .pfoot { display: flex; justify-content: space-between; align-items: center; }
 .del { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #e53935; padding: 4px 8px; border-radius: 14px; }
