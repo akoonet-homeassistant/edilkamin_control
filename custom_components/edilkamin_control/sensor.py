@@ -52,6 +52,7 @@ class CurrentProfile(EdilkaminEntity, SensorEntity):
             "profile_id": st.get("current"),
             "substitution": st.get("substitution"),
             "occupied": self.ctl.occupied,
+            "presence": self.ctl.presence_detail(),
             "resync": st.get("resync"),
             "observe": self.ctl.observe,
             "holiday_calendar": self.ctl.cfg.get("holiday_calendar"),

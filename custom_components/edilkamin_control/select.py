@@ -6,7 +6,7 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_FAN2, CONF_PRESENCE, F_ABSENT, F_FAN1, F_FAN2, F_ID, F_MODE, F_POWER, MODES
+from .const import CONF_FAN2, F_ABSENT, F_FAN1, F_FAN2, F_ID, F_MODE, F_POWER, MODES
 from .entity import EdilkaminEntity, ProfileEntity, profile_ids
 
 
@@ -19,7 +19,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddE
         ents.append(ProfileOption(ctl, pid, "fan1", F_FAN1, "mdi:fan", ctl.fan1_options))
         if ctl.ent(CONF_FAN2):
             ents.append(ProfileOption(ctl, pid, "fan2", F_FAN2, "mdi:fan-chevron-up", ctl.fan2_options))
-        if ctl.ent(CONF_PRESENCE):
+        if ctl.presence_entities():
             ents.append(ProfileAbsent(ctl, pid))
     async_add_entities(ents)
 

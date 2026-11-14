@@ -396,9 +396,9 @@ class EdilkaminController:
                 hass, [e for e in self.legacy_logs if e], self._on_legacy_log))
         # Ordres donnés par un utilisateur (carte, tableau de bord, application, assistant vocal)
         self._unsubs.append(hass.bus.async_listen(EVENT_CALL_SERVICE, self._on_call_service))
-        if self.ent(CONF_PRESENCE):
-            self._update_occupied(hass.states.get(self.ent(CONF_PRESENCE)), initial=True)
-            self._unsubs.append(async_track_state_change_event(hass, [self.ent(CONF_PRESENCE)], self._on_presence))
+        if self.presence_entities():
+            self._update_occupied(initial=True)
+            self._unsubs.append(async_track_state_change_event(hass, self.presence_entities(), self._on_presence))
         self._setup_pellet()
         if self.windows():
             self._unsubs.append(async_track_state_change_event(hass, self.windows(), self._on_window_event))
@@ -1269,10 +1269,18 @@ class EdilkaminController:
         self.notify()
 
     # ------------------------------------------------------------------ présence
-    def _update_occupied(self, s: State | None, initial: bool = False) -> bool:
-        """Maison occupée ? Renvoie True si la valeur a changé."""
+    def presence_entities(self) -> list[str]:
+        """Entités de présence (une ou plusieurs ; ancienne configuration : une seule)."""
+        v = self.cfg.get(CONF_PRESENCE)
+        if not v:
+            return []
+        return [e for e in ([v] if isinstance(v, str) else list(v)) if e]
+
+    @staticmethod
+    def _presence_value(s: State | None) -> bool | None:
+        """Présence indiquée par une entité : True présent, False absent, None inconnu."""
         if s is None or s.state in STATUS_UNAVAILABLE:
-            return False
+            return None
         dom = s.entity_id.split(".")[0]
         val: bool | None
         if dom == "alarm_control_panel":
@@ -1288,14 +1296,26 @@ class EdilkaminController:
             val = False
         else:
             val = s.state == "home" if dom in ("person", "device_tracker") else None
-        if val is None or val == self.occupied:
+        return val
+
+    def presence_detail(self) -> dict[str, bool | None]:
+        return {e: self._presence_value(self.hass.states.get(e)) for e in self.presence_entities()}
+
+    def _update_occupied(self, initial: bool = False) -> bool:
+        """Maison occupée si au moins une entité indique une présence ; vide seulement quand
+        toutes celles qui répondent indiquent l'absence. Renvoie True si la valeur a changé."""
+        known = [v for v in self.presence_detail().values() if v is not None]
+        if not known:
+            return False
+        val = any(known)
+        if val == self.occupied:
             return False
         self.occupied = val
         return not initial
 
     @callback
     def _on_presence(self, event: Event) -> None:
-        if self._update_occupied(event.data.get("new_state")):
+        if self._update_occupied():
             self.notify()
             self.hass.async_create_task(self.async_apply(K_PRESENCE))
             self.schedule_verify(K_PRESENCE)

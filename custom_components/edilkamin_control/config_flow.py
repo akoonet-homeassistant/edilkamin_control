@@ -114,6 +114,13 @@ def pellet_entries(hass: HomeAssistant) -> list[selector.SelectOptionDict]:
             for e in hass.config_entries.async_entries("suivi_stock_pellet")]
 
 
+def presence_list(value: Any) -> list[str]:
+    """Présence : une entité (anciennes versions) ou une liste."""
+    if not value:
+        return []
+    return [e for e in ([value] if isinstance(value, str) else list(value)) if e]
+
+
 def entities_schema(hass: HomeAssistant, d: dict[str, Any]) -> vol.Schema:
     def ent(domain: str | list[str]) -> selector.EntitySelector:
         return selector.EntitySelector(selector.EntitySelectorConfig(domain=domain))
@@ -130,7 +137,8 @@ def entities_schema(hass: HomeAssistant, d: dict[str, Any]) -> vol.Schema:
         opt(CONF_IGNITIONS): ent("sensor"),
         opt(CONF_IGNITION_LOG): ent(["input_text", "text"]),
         opt(CONF_STOP_LOG): ent(["input_text", "text"]),
-        opt(CONF_PRESENCE): ent(PRESENCE_DOMAINS),
+        vol.Optional(CONF_PRESENCE, description={"suggested_value": presence_list(d.get(CONF_PRESENCE))}):
+            selector.EntitySelector(selector.EntitySelectorConfig(domain=PRESENCE_DOMAINS, multiple=True)),
         opt(CONF_MQTT_TOPIC): selector.TextSelector(),
         opt(CONF_FIRMWARE_URL): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.URL)),
         opt(CONF_WINDOWS): selector.EntitySelector(selector.EntitySelectorConfig(
@@ -160,7 +168,8 @@ def clean(user_input: dict[str, Any]) -> dict[str, Any]:
     if out.get(CONF_PELLET_ENTRY) == NONE:
         out[CONF_PELLET_ENTRY] = None
     out[CONF_WINDOWS] = list(out.get(CONF_WINDOWS) or [])
-    for k in (CONF_FAN2, CONF_RELAX, CONF_CHRONO, CONF_IGNITIONS, CONF_IGNITION_LOG, CONF_STOP_LOG, CONF_PRESENCE, CONF_MQTT_TOPIC, CONF_FIRMWARE_URL, CONF_HOLIDAYS):
+    out[CONF_PRESENCE] = presence_list(out.get(CONF_PRESENCE))
+    for k in (CONF_FAN2, CONF_RELAX, CONF_CHRONO, CONF_IGNITIONS, CONF_IGNITION_LOG, CONF_STOP_LOG, CONF_MQTT_TOPIC, CONF_FIRMWARE_URL, CONF_HOLIDAYS):
         out.setdefault(k, None)
         if out[k] == "":
             out[k] = None
