@@ -29,7 +29,7 @@ Elle n'intervient pas sur le poêle lui-même : tout passe par les entités publ
 - **Allumage et extinction** : passage hors programmation → programmation, réactivation de la programmation, forçage, et début ou fin de plage quand le poêle est éteint alors que la programmation est en Marche, ou en Stand-by avec une température sous la consigne. Hors programmation, le poêle est éteint (une seule fois, au changement).
 - **Programmation forcée** : une programmation appliquée tout de suite, jusqu'au prochain début ou fin de plage.
 - **Jours fériés** : avec le calendrier de l'intégration Jours fériés (Holiday) de Home Assistant, une programmation peut être cochée « Jours fériés ». Un jour férié, seules les programmations cochées s'appliquent, à la place de celles du jour de la semaine ; si aucune n'est cochée, le jour de la semaine s'applique. Sans ce calendrier, la case ne peut pas être cochée.
-- **Si absent** : avec une entité de présence (alarme, personne, zone, interrupteur…), chaque programmation peut être remplacée par une autre quand la maison est vide.
+- **Si absent** : avec une ou plusieurs entités de présence (alarme, personnes, zone, interrupteur…), chaque programmation peut être remplacée par une autre quand la maison est vide.
 
 #### Réglages faits à la main
 
@@ -126,7 +126,9 @@ Si vous aviez ajouté le dépôt dans les **Dépôts personnalisés** de HACS, v
    - **Historique des allumages existant / des arrêts existant** (`input_text`, facultatifs) : listes « jj/mm hh:mm » tenues par une automatisation, la plus récente en premier (« - » = en cours, « ? » = arrêt non vu). Trouvées automatiquement (`input_text.poele_…allumages` et `…arrets`) ; elles alimentent la tuile Allumages dès l'installation.
 
      ![Options de l'historique](docs/screenshots/options_historique.png)
-   - **Présence** : maison vide si l'alarme est en mode absence ou vacances, la personne absente, la zone vide ou l'interrupteur coupé.
+   - **Présence** (une ou plusieurs entités : alarme, personnes, zone, interrupteur…) : maison vide quand **toutes** les entités indiquent l'absence (alarme en mode absence ou vacances, personne absente, zone vide, interrupteur coupé). Une seule entité présente suffit pour une maison occupée ; une entité indisponible ne compte pas.
+
+     ![Options de présence](docs/screenshots/options_presence.png)
    - **Fenêtres et portes surveillées** (facultatif, capteurs binaires de type fenêtre, porte, ouverture ou porte de garage), **délai avant coupure** et **délai avant reprise** (0 à 60 min chacun).
 
      ![Options des fenêtres](docs/screenshots/options_fenetres.png)
@@ -229,7 +231,7 @@ Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
 |---|---|
 | `switch.poele_programmation` | Programmation activée |
 | `select.poele_programmation_forcee` | Automatique, ou programmation forcée jusqu'au prochain changement de plage |
-| `sensor.poele_programmation_en_cours` | Programmation appliquée (attributs `profile`, `substitution`, `occupied`, `resync`, `observe`, `holiday_calendar`, `holiday_today`, `holidays`) |
+| `sensor.poele_programmation_en_cours` | Programmation appliquée (attributs `profile`, `substitution`, `occupied`, `presence` (état de chaque entité de présence), `resync`, `observe`, `holiday_calendar`, `holiday_today`, `holidays`) |
 | `sensor.poele_prochain_changement` | Prochain début ou fin de plage |
 | `sensor.poele_dernier_allumage` | Dernier allumage (attribut `history` : allumages des 3 derniers jours, début et arrêt) |
 | `sensor.poele_derniere_alarme` | Début de la dernière alarme (attribut `history` : 10 dernières alarmes, libellé, début et fin) |
@@ -304,7 +306,7 @@ It does not touch the stove itself: everything goes through the entities publish
 - **Turning on and off**: leaving no schedule for a schedule, re-enabling scheduling, forcing, and a slot start or end while the stove is off and the schedule is in Run, or in Standby with the temperature below the setpoint. Outside any schedule the stove is turned off (once, on the change).
 - **Forced schedule**: one schedule applied right away, until the next slot start or end.
 - **Public holidays**: with the calendar of Home Assistant's Holiday integration, a schedule can be ticked “Public holidays”. On a public holiday, only the ticked schedules apply, instead of the weekday ones; if none is ticked, the weekday applies. Without this calendar, the box cannot be ticked.
-- **If away**: with a presence entity (alarm, person, zone, switch…), each schedule can be replaced by another one when the house is empty.
+- **If away**: with one or more presence entities (alarm, people, zone, switch…), each schedule can be replaced by another one when the house is empty.
 
 #### Settings changed by hand
 
@@ -401,7 +403,9 @@ If you had added the repository to HACS **Custom repositories**, you can remove 
    - **Existing ignition / stop history** (`input_text`, optional): « dd/mm hh:mm » lists kept by an automation, newest first (« - » = running, « ? » = missed stop). Found automatically (`input_text.poele_…allumages` and `…arrets`); they feed the Ignitions tile as soon as the integration is installed.
 
      ![History options](docs/screenshots/options_historique.png)
-   - **Presence**: empty house when the alarm is armed away or vacation, the person is away, the zone is empty or the switch is off.
+   - **Presence** (one or more entities: alarm, people, zone, switch…): empty house when **all** entities say away (alarm armed away or vacation, person away, empty zone, switch off). One present entity is enough for an occupied house; an unavailable entity does not count.
+
+     ![Presence options](docs/screenshots/options_presence.png)
    - **Watched windows and doors** (optional, binary sensors of the window, door, opening or garage door type), **delay before cut-off** and **delay before resuming** (0 to 60 min each).
 
      ![Window options](docs/screenshots/options_fenetres.png)
@@ -504,7 +508,7 @@ The entity IDs depend on the entry name and on the Home Assistant language (show
 |---|---|
 | `switch.stove_schedule` | Scheduling enabled |
 | `select.stove_forced_schedule` | Automatic, or a schedule forced until the next slot change |
-| `sensor.stove_current_schedule` | Applied schedule (attributes `profile`, `substitution`, `occupied`, `resync`, `observe`, `holiday_calendar`, `holiday_today`, `holidays`) |
+| `sensor.stove_current_schedule` | Applied schedule (attributes `profile`, `substitution`, `occupied`, `presence` (state of each presence entity), `resync`, `observe`, `holiday_calendar`, `holiday_today`, `holidays`) |
 | `sensor.stove_next_change` | Next slot start or end |
 | `sensor.stove_last_ignition` | Last ignition (attribute `history`: ignitions of the last 3 days, start and stop) |
 | `sensor.stove_last_alarm` | Start of the last alarm (attribute `history`: last 10 alarms, label, start and end) |
