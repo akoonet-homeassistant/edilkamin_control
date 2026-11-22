@@ -1630,7 +1630,12 @@ class EdilkaminController:
         if self.pellet_consumed:
             self._unsubs.append(async_track_state_change_event(self.hass, [self.pellet_consumed], self._on_pellet))
         if self.pellet_stock:
-            self._unsubs.append(async_track_state_change_event(self.hass, [self.pellet_stock], lambda _e: self.notify()))
+            self._unsubs.append(async_track_state_change_event(self.hass, [self.pellet_stock], self._on_stock))
+
+    @callback
+    def _on_stock(self, _event: Event) -> None:
+        """Stock de Suivi Stock Pellet modifié : mise à jour des entités (boucle d'événements)."""
+        self.notify()
 
     @callback
     def _on_pellet(self, event: Event) -> None:
