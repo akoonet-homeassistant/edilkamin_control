@@ -53,7 +53,7 @@ Quand une fenêtre ou une porte surveillée reste ouverte plus longtemps que le 
 #### Granulés et allumages
 
 - **Réservoir de granulés** : heures de chauffe depuis le remplissage, durée du dernier réservoir, durée moyenne, autonomie estimée, seuil d'alerte, réserve signalée par le poêle. Tout est regroupé dans le menu de la tuile Granulés de la carte. Un suivi déjà tenu par une automatisation est repris une fois au premier démarrage, s'il est trouvé : `sensor.…poele…heures_depuis_remplissage`, `input_text.…poele…durees_reservoirs`, `input_number.…poele…dernier_chargement` et `input_number.…poele…seuil_alerte_reservoir` (la reprise est notée dans le journal).
-- **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (facultatif, s'il est installé) : le bouton « Réservoir rempli » enregistre la consommation dans Suivi Stock Pellet, une consommation saisie dans Suivi Stock Pellet remet le compteur du réservoir à zéro, et l'autonomie du stock est calculée.
+- **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (facultatif, s'il est installé) : le bouton « Réservoir rempli » enregistre la consommation dans Suivi Stock Pellet, une consommation saisie dans Suivi Stock Pellet remet le compteur du réservoir à zéro, et l'autonomie du stock est calculée. Si ce sac est ensuite annulé ou supprimé dans Suivi Stock Pellet, le remplissage est annulé : le réservoir revient à son état d'avant.
 - **Historique des allumages** : les allumages des 3 derniers jours (heure d'allumage, d'arrêt, durée, total et moyenne), d'après le compteur d'allumages du poêle. Affiché par la tuile Allumages de la carte. L'historique déjà tenu par une automatisation (listes « jj/mm hh:mm ; … » en `input_text`) est repris et suivi.
 - **Historique des alarmes** : les 10 dernières alarmes du poêle (libellé, début, fin, durée), enregistrées à partir de l'alarme publiée par l'ESP32. Affiché par la tuile Alarme en cours de la carte. L'historique commence à l'installation de la version 2026.11.18.
 
@@ -271,6 +271,7 @@ Les identifiants dépendent du nom de l'entrée (ici « Poêle »).
 | `edilkamin_control.set_profile_days` | Jours d'une programmation (`days`, 0 = lundi … 6 = dimanche, 7 = jours fériés) |
 | `edilkamin_control.move_profile` | Change la position d'une programmation (priorité) |
 | `edilkamin_control.reservoir_filled` | Remet le compteur du réservoir à zéro |
+| `edilkamin_control.undo_reservoir_filled` | Annule le dernier remplissage (appui par erreur) : chauffe et durées des réservoirs d'avant, chauffe depuis conservée |
 | `edilkamin_control.publish_schedule` | Envoie tout de suite le planning de secours |
 
 #### Planning de secours (MQTT)
@@ -330,7 +331,7 @@ When a watched window or door stays open longer than the delay before cut-off (0
 #### Pellets and ignitions
 
 - **Pellet hopper**: burn hours since refill, last and average hopper duration, estimated autonomy, alert threshold, reserve reported by the stove. Everything is grouped in the menu of the card's Pellets tile. A hopper follow-up already kept by an automation is imported once at first start, when found: `sensor.…poele…heures_depuis_remplissage`, `input_text.…poele…durees_reservoirs`, `input_number.…poele…dernier_chargement` and `input_number.…poele…seuil_alerte_reservoir` (the import is written to the log).
-- **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (optional, when installed): the “Hopper refilled” button logs the consumption in Suivi Stock Pellet, a consumption logged in Suivi Stock Pellet resets the hopper counter, and the stock autonomy is computed.
+- **[Suivi Stock Pellet](https://github.com/cyclope205/suivi-stock-pellet)** (optional, when installed): the “Hopper refilled” button logs the consumption in Suivi Stock Pellet, a consumption logged in Suivi Stock Pellet resets the hopper counter, and the stock autonomy is computed. If that bag is then undone or deleted in Suivi Stock Pellet, the refill is undone: the hopper goes back to its previous state.
 - **Ignition history**: ignitions of the last 3 days (start, stop, duration, total and average), from the stove ignition counter. Shown by the card's Ignitions tile. A history already kept by an automation (« dd/mm hh:mm ; … » lists in `input_text`) is imported and followed.
 - **Alarm history**: the last 10 stove alarms (label, start, end, duration), recorded from the alarm published by the ESP32. Shown by the card's Current alarm tile. The history starts when version 2026.11.18 is installed.
 
@@ -548,6 +549,7 @@ The entity IDs depend on the entry name and on the Home Assistant language (show
 | `edilkamin_control.set_profile_days` | Days of a schedule (`days`, 0 = Monday … 6 = Sunday, 7 = public holidays) |
 | `edilkamin_control.move_profile` | Changes the position of a schedule (priority) |
 | `edilkamin_control.reservoir_filled` | Resets the hopper counter |
+| `edilkamin_control.undo_reservoir_filled` | Undoes the last refill (pressed by mistake): previous burn time and hopper durations, burn time since then kept |
 | `edilkamin_control.publish_schedule` | Sends the fallback schedule now |
 
 #### Fallback schedule (MQTT)

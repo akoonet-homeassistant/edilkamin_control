@@ -112,6 +112,12 @@ reservoir_filled:
       selector:
         config_entry:
           integration: edilkamin_control
+undo_reservoir_filled:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: edilkamin_control
 publish_schedule:
   fields:
     entry_id:

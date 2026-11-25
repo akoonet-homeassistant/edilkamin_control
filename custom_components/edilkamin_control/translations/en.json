@@ -355,6 +355,16 @@
         }
       }
     },
+    "undo_reservoir_filled": {
+      "name": "Undo hopper refill",
+      "description": "Undoes the last “Hopper refilled” (pressed by mistake): the burn-time counter and the hopper durations go back to their previous state.",
+      "fields": {
+        "entry_id": {
+          "name": "Stove",
+          "description": "Edilkamin Control entry."
+        }
+      }
+    },
     "publish_schedule": {
       "name": "Send the fallback schedule",
       "description": "Publishes the fallback schedule to the ESP32 now.",

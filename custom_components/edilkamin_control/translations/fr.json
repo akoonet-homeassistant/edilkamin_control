@@ -355,6 +355,16 @@
         }
       }
     },
+    "undo_reservoir_filled": {
+      "name": "Annuler le remplissage",
+      "description": "Annule le dernier « Réservoir rempli » (appui par erreur) : le compteur de chauffe et les durées des réservoirs reviennent à leur état d'avant.",
+      "fields": {
+        "entry_id": {
+          "name": "Poêle",
+          "description": "Entrée Edilkamin Control."
+        }
+      }
+    },
     "publish_schedule": {
       "name": "Envoyer le planning de secours",
       "description": "Publie tout de suite le planning de secours vers l'ESP32.",

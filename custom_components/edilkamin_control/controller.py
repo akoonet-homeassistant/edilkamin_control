@@ -1595,6 +1595,10 @@ class EdilkaminController:
     def reservoir_filled(self, load_kg: float | None = None) -> None:
         r = self.reservoir
         h = self.reservoir_hours()
+        # État d'avant le remplissage, pour pouvoir l'annuler (appui par erreur)
+        r["undo"] = {"hours": h, "durations": list(r.get("durations") or []), "last_load": r.get("last_load"),
+                     "alerted": bool(r.get("alerted")), "load": None if load_kg is None else round(load_kg, 1),
+                     "at": dt_util.utcnow().isoformat()}
         if h > 0.5:
             r["durations"] = ([round(h, 1)] + list(r.get("durations") or []))[:10]
         r["hours"] = 0.0
@@ -1604,6 +1608,23 @@ class EdilkaminController:
             r["last_load"] = round(load_kg, 1)
         self.async_save()
         self.notify()
+
+    def reservoir_undo(self) -> bool:
+        """Annule le dernier remplissage : heures de chauffe d'avant + chauffe depuis, durées d'avant."""
+        r = self.reservoir
+        u = r.pop("undo", None)
+        if not u:
+            self._log("Annulation du remplissage impossible : aucun remplissage à annuler.")
+            return False
+        # Chauffe comptée depuis le remplissage (heures cumulées + période en cours) ajoutée à celle d'avant
+        r["hours"] = float(u.get("hours") or 0) + float(r.get("hours") or 0)
+        r["durations"] = list(u.get("durations") or [])
+        r["last_load"] = u.get("last_load")
+        r["alerted"] = bool(u.get("alerted")) or self.reservoir_low()  # pas de nouvelle alerte pour un seuil déjà dépassé
+        self._log("Remplissage du réservoir annulé.")
+        self.async_save()
+        self.notify()
+        return True
 
     async def async_press_filled(self) -> None:
         """Bouton « Réservoir rempli » : passe par Suivi Stock Pellet s'il est configuré."""
@@ -1639,7 +1660,8 @@ class EdilkaminController:
 
     @callback
     def _on_pellet(self, event: Event) -> None:
-        """« Consommé » qui augmente dans Suivi Stock Pellet = réservoir rempli (une baisse est ignorée)."""
+        """« Consommé » dans Suivi Stock Pellet : une hausse = réservoir rempli ; une baisse de la même quantité
+        que le dernier remplissage (saisie annulée ou supprimée) = remplissage annulé. Autre baisse ignorée."""
         old, new = event.data.get("old_state"), event.data.get("new_state")
         try:
             before, after = float(old.state), float(new.state)
@@ -1647,6 +1669,10 @@ class EdilkaminController:
             return
         if after > before:
             self.reservoir_filled(after - before)
+        elif after < before:
+            u = self.reservoir.get("undo")
+            if u and u.get("load") is not None and abs((before - after) - float(u["load"])) < 0.5:
+                self.reservoir_undo()
 
     @callback
     def _on_tick(self, _now: datetime) -> None:

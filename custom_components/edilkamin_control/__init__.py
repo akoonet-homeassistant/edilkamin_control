@@ -156,6 +156,9 @@ def _register_services(hass: HomeAssistant) -> None:
     async def reservoir_filled(call: ServiceCall) -> None:
         _controller(hass, call).reservoir_filled()
 
+    async def undo_reservoir_filled(call: ServiceCall) -> None:
+        _controller(hass, call).reservoir_undo()
+
     async def publish_schedule(call: ServiceCall) -> None:
         _controller(hass, call).schedule_publish(0)
 
@@ -164,6 +167,7 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, "set_profile_days", set_profile_days, SCHEMA_DAYS)
     hass.services.async_register(DOMAIN, "move_profile", move_profile, SCHEMA_MOVE)
     hass.services.async_register(DOMAIN, "reservoir_filled", reservoir_filled, SCHEMA_ENTRY)
+    hass.services.async_register(DOMAIN, "undo_reservoir_filled", undo_reservoir_filled, SCHEMA_ENTRY)
     hass.services.async_register(DOMAIN, "publish_schedule", publish_schedule, SCHEMA_ENTRY)
 
 
